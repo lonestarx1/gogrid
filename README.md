@@ -81,7 +81,7 @@ Python works for prototyping. Go works for production — the same way Kubernete
 
 ## License
 
-TBD
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
