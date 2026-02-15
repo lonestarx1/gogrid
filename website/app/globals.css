@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0a0a;
+  --color-bg-card: #111111;
+  --color-bg-card-hover: #1a1a1a;
+  --color-accent: #00ff88;
+  --color-accent-dim: #00cc6a;
+  --color-text: #e0e0e0;
+  --color-text-muted: #888888;
+  --color-border: #222222;
+
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+/* Dot grid background pattern */
+.dot-grid {
+  background-image: radial-gradient(circle, #222 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Animated grid for hero */
+.animated-grid {
+  background-image:
+    linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+  animation: grid-drift 20s linear infinite;
+}
+
+@keyframes grid-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 64px 64px; }
+}
+
+/* Glow effect for accent elements */
+.glow {
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.3), 0 0 40px rgba(0, 255, 136, 0.1);
+}
+
+.glow-box {
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.08), 0 0 40px rgba(0, 255, 136, 0.04);
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: "█";
+  animation: blink 1s step-end infinite;
+  color: var(--color-accent);
+}
