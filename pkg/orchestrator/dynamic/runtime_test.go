@@ -57,20 +57,6 @@ func (e *errorProvider) Complete(_ context.Context, _ llm.Params) (*llm.Response
 	return nil, e.err
 }
 
-// costProvider returns a response with configurable cost.
-type costProvider struct {
-	content string
-	usage   llm.Usage
-}
-
-func (c *costProvider) Complete(_ context.Context, _ llm.Params) (*llm.Response, error) {
-	return &llm.Response{
-		Message: llm.NewAssistantMessage(c.content),
-		Usage:   c.usage,
-		Model:   "mock-model",
-	}, nil
-}
-
 // --- Helpers ---
 
 func newTestAgent(name, content string) *agent.Agent {
