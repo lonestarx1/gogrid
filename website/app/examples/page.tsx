@@ -35,6 +35,11 @@ const examples = [
     desc: "A leader agent synthesizes team responses into a final decision.",
   },
   {
+    id: "research-pipeline",
+    title: "Research Pipeline",
+    desc: "Three-stage pipeline: research, analyze, summarize — with retry and progress.",
+  },
+  {
     id: "pipeline-state",
     title: "Pipeline State Transfer",
     desc: "State ownership enforced across pipeline stages with audit trail.",
@@ -516,6 +521,106 @@ func min(a, b int) int {
         return a
     }
     return b
+}`}
+            />
+          </ExampleSection>
+
+          {/* Research Pipeline */}
+          <ExampleSection
+            id="research-pipeline"
+            title="Research Pipeline"
+            desc="A three-stage pipeline with retry, input transforms, and progress reporting. Each stage processes output from the previous one."
+          >
+            <CodeBlock
+              filename="examples/research-pipeline/main.go"
+              code={`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+    "time"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/llm/openai"
+    "github.com/lonestarx1/gogrid/pkg/orchestrator/pipeline"
+    "github.com/lonestarx1/gogrid/pkg/trace"
+)
+
+func main() {
+    ctx := context.Background()
+    provider := openai.New(os.Getenv("OPENAI_API_KEY"))
+    tracer := trace.NewStdout(os.Stdout)
+
+    researcher := agent.New("researcher",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a research assistant. Find key facts about the topic."),
+        agent.WithTracer(tracer),
+    )
+
+    analyst := agent.New("analyst",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a data analyst. Identify patterns and insights."),
+        agent.WithTracer(tracer),
+    )
+
+    writer := agent.New("writer",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a technical writer. Produce a clear, concise summary."),
+        agent.WithTracer(tracer),
+    )
+
+    p := pipeline.New("research",
+        pipeline.WithStages(
+            pipeline.Stage{
+                Name:  "research",
+                Agent: researcher,
+                Retry: pipeline.RetryPolicy{MaxAttempts: 2, Delay: time.Second},
+            },
+            pipeline.Stage{
+                Name:  "analyze",
+                Agent: analyst,
+                InputTransform: func(input string) string {
+                    return "Analyze the following research:\\n\\n" + input
+                },
+            },
+            pipeline.Stage{
+                Name:  "summarize",
+                Agent: writer,
+                InputTransform: func(input string) string {
+                    return "Summarize these findings in 3 bullet points:\\n\\n" + input
+                },
+            },
+        ),
+        pipeline.WithTracer(tracer),
+        pipeline.WithConfig(pipeline.Config{
+            Timeout:    2 * time.Minute,
+            CostBudget: 1.00,
+        }),
+        pipeline.WithProgress(func(idx, total int, sr pipeline.StageResult) {
+            fmt.Printf("[%d/%d] Stage %q completed\\n", idx+1, total, sr.Name)
+        }),
+    )
+
+    result, err := p.Run(ctx, "Impact of large language models on software development")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println("\\n=== Final Output ===")
+    fmt.Println(result.Output)
+    fmt.Printf("\\nStages: %d | Cost: $%.4f | Tokens: %d\\n",
+        len(result.Stages), result.TotalCost, result.TotalUsage.TotalTokens)
+
+    fmt.Println("\\n=== State Transfer Log ===")
+    for _, entry := range result.TransferLog {
+        fmt.Printf("  %s -> %s (generation %d)\\n",
+            entry.From, entry.To, entry.Generation)
+    }
 }`}
             />
           </ExampleSection>

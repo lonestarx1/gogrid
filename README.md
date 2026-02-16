@@ -37,7 +37,7 @@ A well-scoped agent with a small number of tools. The recommended starting point
 Multiple domain experts collaborating in real-time — like a meeting where participants work concurrently, debate, and reach consensus. Built on pub/sub messaging with shared memory. An optional coordinator agent can synthesize a final decision from all member responses.
 
 ### Pipeline (Linear)
-Sequential handoff between specialists. Each agent completes its work, yields its state to the next agent, and terminates cleanly. Clear ownership, predictable execution.
+Sequential handoff between specialists. Each agent completes its work, yields its state to the next agent, and terminates cleanly. Supports stage-level retry policies, input transforms, output validation, and progress reporting. Clear ownership, predictable execution.
 
 ### Graph
 Like a pipeline, but with the ability to loop back (re-do, clarify) or branch into parallel paths that merge later. Best for workflows with a bounded number of agents where you want to visualize the data flow.

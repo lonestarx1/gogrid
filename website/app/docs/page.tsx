@@ -19,6 +19,9 @@ const sections = [
   { id: "message-bus", label: "Message Bus" },
   { id: "consensus", label: "Consensus Strategies" },
   { id: "coordinator", label: "Coordinator" },
+  { id: "pipeline", label: "Pipeline" },
+  { id: "pipeline-stages", label: "Pipeline Stages" },
+  { id: "pipeline-retry", label: "Retry & Error Handling" },
   { id: "tracing", label: "Tracing" },
   { id: "cost-tracking", label: "Cost Tracking" },
 ];
@@ -767,6 +770,137 @@ result, _ := t.Run(ctx, "Review this function: ...")
               </P>
             </Section>
 
+            {/* Pipeline */}
+            <Section id="pipeline" title="Pipeline (Linear)">
+              <P>
+                The Pipeline pattern chains agents sequentially — each stage processes
+                input, produces output, and transfers state ownership to the next stage.
+                Previous stages lose access to the data once ownership is transferred.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/orchestrator/pipeline"
+
+p := pipeline.New("research-pipeline",
+    pipeline.WithStages(
+        pipeline.Stage{Name: "collect", Agent: collector},
+        pipeline.Stage{Name: "analyze", Agent: analyzer},
+        pipeline.Stage{Name: "summarize", Agent: summarizer},
+    ),
+    pipeline.WithConfig(pipeline.Config{
+        Timeout:    5 * time.Minute,
+        CostBudget: 2.00,
+    }),
+)
+
+result, err := p.Run(ctx, "Research the impact of AI on healthcare")
+fmt.Println(result.Output) // Final stage's output
+fmt.Printf("Stages: %d, Cost: $%.4f\\n", len(result.Stages), result.TotalCost)`}
+                filename="pipeline"
+              />
+              <H3>State Ownership Transfer</H3>
+              <P>
+                Pipelines integrate with GoGrid&apos;s <Code>memory/transfer</Code> package.
+                Each stage gets an owned handle — when state transfers to the next stage,
+                the previous handle is invalidated. The audit trail records every transfer.
+              </P>
+              <CodeBlock
+                code={`// The transfer log shows ownership history
+for _, entry := range result.TransferLog {
+    fmt.Printf("%s -> %s (generation %d)\\n",
+        entry.From, entry.To, entry.Generation)
+}
+// Output:
+//  -> collect (generation 1)
+// collect -> analyze (generation 2)
+// analyze -> summarize (generation 3)`}
+                filename="transfer log"
+              />
+            </Section>
+
+            {/* Pipeline Stages */}
+            <Section id="pipeline-stages" title="Pipeline Stages">
+              <P>
+                Each stage can optionally transform its input and validate its output.
+              </P>
+              <CodeBlock
+                code={`pipeline.Stage{
+    Name:  "analyze",
+    Agent: analyzer,
+    // Transform the previous stage's output before passing to this agent
+    InputTransform: func(input string) string {
+        return "Analyze the following data:\\n\\n" + input
+    },
+    // Validate the output before proceeding to the next stage
+    OutputValidate: func(output string) error {
+        if len(output) < 100 {
+            return errors.New("analysis too short")
+        }
+        return nil
+    },
+    // Per-stage timeout and cost budget
+    Timeout:    30 * time.Second,
+    CostBudget: 0.50,
+}`}
+                filename="stage options"
+              />
+              <H3>Progress Reporting</H3>
+              <P>
+                Track pipeline progress with a callback function.
+              </P>
+              <CodeBlock
+                code={`p := pipeline.New("tracked",
+    pipeline.WithStages(...),
+    pipeline.WithProgress(func(idx, total int, sr pipeline.StageResult) {
+        fmt.Printf("[%d/%d] Stage %q completed\\n", idx+1, total, sr.Name)
+    }),
+)`}
+                filename="progress"
+              />
+            </Section>
+
+            {/* Pipeline Retry & Error Handling */}
+            <Section id="pipeline-retry" title="Retry & Error Handling">
+              <P>
+                Stages support configurable retry policies and error actions.
+              </P>
+              <CodeBlock
+                code={`// Retry up to 3 times with a delay between attempts
+pipeline.Stage{
+    Name:  "flaky-api",
+    Agent: apiAgent,
+    Retry: pipeline.RetryPolicy{
+        MaxAttempts: 3,
+        Delay:       2 * time.Second,
+    },
+}
+
+// Skip on failure instead of aborting the pipeline
+pipeline.Stage{
+    Name:    "optional-enrichment",
+    Agent:   enrichAgent,
+    OnError: pipeline.Skip,
+}
+
+// Default: abort the pipeline on failure
+pipeline.Stage{
+    Name:    "critical-step",
+    Agent:   criticalAgent,
+    OnError: pipeline.Abort, // default behavior
+}`}
+                filename="retry and error handling"
+              />
+              <H3>Error Actions</H3>
+              <div className="space-y-4 mb-6">
+                <Card title="Abort" desc="Stop the pipeline and return the error. This is the default behavior." />
+                <Card title="Skip" desc="Mark the stage as skipped and continue with the previous stage's output. The pipeline proceeds to the next stage." />
+              </div>
+              <P>
+                When a stage with retry fails all attempts and has <Code>OnError: Skip</Code>,
+                the stage is skipped after exhausting retries. The <Code>StageResult.Attempts</Code> field
+                records how many times the stage was executed.
+              </P>
+            </Section>
+
             {/* Tracing */}
             <Section id="tracing" title="Tracing">
               <P>
@@ -825,6 +959,24 @@ for _, span := range tracer.Spans() {
 //           ├─ llm.complete
 //           └─ memory.save`}
                 filename="team trace tree"
+              />
+              <H3>Pipeline Trace Spans</H3>
+              <P>
+                Pipeline execution produces a trace tree with pipeline and per-stage spans.
+              </P>
+              <CodeBlock
+                code={`// Trace tree for a pipeline run:
+// pipeline.run
+//   ├─ pipeline.stage (collect)
+//   │   ├─ agent.run
+//   │   │   ├─ memory.load
+//   │   │   ├─ llm.complete
+//   │   │   └─ memory.save
+//   ├─ pipeline.stage (analyze)
+//   │   └─ agent.run ...
+//   └─ pipeline.stage (summarize)
+//       └─ agent.run ...`}
+                filename="pipeline trace tree"
               />
             </Section>
 
