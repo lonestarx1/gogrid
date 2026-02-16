@@ -68,7 +68,9 @@ func SpanFromContext(ctx context.Context) *Span {
 	return span
 }
 
-func newSpan(ctx context.Context, name string) (context.Context, *Span) {
+// NewSpan creates a span with the given name, linking to any parent span
+// in the context. The returned context carries the new span.
+func NewSpan(ctx context.Context, name string) (context.Context, *Span) {
 	span := &Span{
 		ID:        id.New(),
 		Name:      name,

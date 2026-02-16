@@ -64,8 +64,8 @@ Python works for prototyping. Go works for production — the same way Kubernete
 
 ## Features
 
-- **Built-in observability** — Structured tracing across GoGrid agent invocations with opt-in log files
-- **Cost governance** — LLM API cost monitoring and budgeting as a first-class GoGrid primitive
+- **Built-in observability** — Structured tracing with OTLP export (Jaeger, Tempo, Zipkin), structured JSON logging with trace correlation, and Prometheus-compatible metrics — all using the Go standard library
+- **Cost governance** — Budget alerts, per-entity cost allocation, aggregate reporting, and built-in pricing for popular models. Every LLM call is metered and budgetable.
 - **Shared memory** — Optimized, monitorable shared memory pool for multi-agent architectures
 - **Evaluation framework** — Built-in metrics for agent performance and scalability
 - **Security integration** — Secure-by-default design with Tenio.ai integration

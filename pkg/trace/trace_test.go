@@ -37,8 +37,8 @@ func TestSpanFromContext(t *testing.T) {
 		t.Errorf("SpanFromContext(empty) = %v, want nil", got)
 	}
 
-	// newSpan inserts a span into the context.
-	ctx, span := newSpan(ctx, "test")
+	// NewSpan inserts a span into the context.
+	ctx, span := NewSpan(ctx, "test")
 	if span.Name != "test" {
 		t.Errorf("Name = %q, want %q", span.Name, "test")
 	}
@@ -58,8 +58,8 @@ func TestSpanFromContext(t *testing.T) {
 func TestSpanParentLinking(t *testing.T) {
 	ctx := context.Background()
 
-	ctx, parent := newSpan(ctx, "parent")
-	_, child := newSpan(ctx, "child")
+	ctx, parent := NewSpan(ctx, "parent")
+	_, child := NewSpan(ctx, "child")
 
 	if child.ParentID != parent.ID {
 		t.Errorf("child.ParentID = %q, want %q", child.ParentID, parent.ID)
