@@ -54,6 +54,11 @@ const examples = [
     title: "Dynamic Research Coordinator",
     desc: "An agent dynamically spawns teams, pipelines, and sub-agents at runtime.",
   },
+  {
+    id: "observability",
+    title: "Full Observability Stack",
+    desc: "OTLP export, structured logging, and Prometheus metrics — all wired together.",
+  },
 ];
 
 export default function ExamplesPage() {
@@ -933,6 +938,110 @@ func main() {
     for _, child := range res.Children {
         fmt.Printf("  [%s] %s — $%.4f\\n", child.Type, child.Name, child.Cost)
     }
+}`}
+            />
+          </ExampleSection>
+
+          {/* Full Observability Stack */}
+          <ExampleSection
+            id="observability"
+            title="Full Observability Stack"
+            desc="Wire up OTLP trace export, structured JSON logging with trace correlation, Prometheus-compatible metrics, and cost governance with budget alerts — all using the Go standard library."
+          >
+            <CodeBlock
+              filename="examples/observability/main.go"
+              code={`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "net/http"
+    "os"
+    "time"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/cost"
+    "github.com/lonestarx1/gogrid/pkg/llm/openai"
+    tracelog "github.com/lonestarx1/gogrid/pkg/trace/log"
+    "github.com/lonestarx1/gogrid/pkg/trace/metrics"
+    "github.com/lonestarx1/gogrid/pkg/trace/otel"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // 1. OTLP Exporter — sends spans to Jaeger/Tempo/etc.
+    exporter := otel.NewExporter(
+        otel.WithEndpoint("http://localhost:4318/v1/traces"),
+        otel.WithServiceName("my-agent-service"),
+        otel.WithServiceVersion("1.0.0"),
+        otel.WithBatchSize(100),
+        otel.WithFlushInterval(5 * time.Second),
+    )
+    defer exporter.Shutdown()
+
+    // 2. Metrics Collector — wraps the exporter, auto-populates metrics
+    reg := metrics.NewRegistry()
+    collector := metrics.NewCollector(exporter, reg)
+
+    // 3. Structured Logger — JSON logging with trace correlation
+    logger := tracelog.New(os.Stdout, tracelog.Info)
+
+    // 4. Cost Governance — budget with threshold alerts
+    tracker := cost.NewTracker()
+    tracker.SetBudget(5.00)
+    tracker.OnBudgetThreshold(func(threshold, current float64) {
+        logger.Warn("cost alert",
+            "threshold", fmt.Sprintf("%.0f%%", threshold*100),
+            "current", fmt.Sprintf("$%.4f", current),
+        )
+    }, 0.5, 0.8, 1.0)
+
+    // 5. Prometheus metrics endpoint
+    go func() {
+        http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+            w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+            fmt.Fprint(w, reg.Export())
+        })
+        _ = http.ListenAndServe(":9090", nil)
+    }()
+
+    // 6. Create agent with the full observability stack
+    provider := openai.New(os.Getenv("OPENAI_API_KEY"))
+    a := agent.New("assistant",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a helpful assistant."),
+        agent.WithTracer(collector), // OTLP export + auto-metrics
+    )
+
+    // Run the agent
+    logger.Info("starting agent run", "agent", "assistant")
+    result, err := a.Run(ctx, "What are the key benefits of observability?")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Log the result with trace correlation
+    logger.InfoCtx(ctx, "agent run complete",
+        "turns", fmt.Sprintf("%d", result.Turns),
+        "cost", fmt.Sprintf("$%.6f", result.Cost),
+        "tokens", fmt.Sprintf("%d", result.Usage.TotalTokens),
+    )
+
+    // Record cost for governance
+    tracker.AddForEntity("gpt-4o", "assistant", result.Usage)
+
+    // Generate cost report
+    report := tracker.Report()
+    fmt.Printf("\\nCost Report: $%.4f across %d calls\\n", report.TotalCost, report.RecordCount)
+    for model, mr := range report.ByModel {
+        fmt.Printf("  %s: %d calls, $%.4f\\n", model, mr.Calls, mr.Cost)
+    }
+
+    fmt.Printf("\\nMetrics available at http://localhost:9090/metrics\\n")
+    fmt.Println(result.Message.Content)
 }`}
             />
           </ExampleSection>

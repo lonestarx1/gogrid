@@ -29,7 +29,11 @@ const sections = [
   { id: "dynamic-governance", label: "Resource Governance" },
   { id: "dynamic-async", label: "Async & Futures" },
   { id: "tracing", label: "Tracing" },
+  { id: "otel", label: "OpenTelemetry Export" },
+  { id: "structured-logging", label: "Structured Logging" },
+  { id: "metrics", label: "Metrics" },
   { id: "cost-tracking", label: "Cost Tracking" },
+  { id: "cost-governance", label: "Cost Governance" },
 ];
 
 export default function DocsPage() {
@@ -134,7 +138,10 @@ export default function DocsPage() {
 │   │   └── transfer/   # Transferable state for pipelines
 │   ├── tool/           # Tool interface and registry
 │   ├── trace/          # Tracing and observability
-│   ├── cost/           # Cost tracking and budgets
+│   │   ├── otel/       # OTLP JSON exporter
+│   │   ├── log/        # Structured JSON logging
+│   │   └── metrics/    # Prometheus-compatible metrics
+│   ├── cost/           # Cost tracking, budgets, and governance
 │   └── orchestrator/
 │       ├── team/       # Team (chat room) orchestrator
 │       ├── pipeline/   # Pipeline (linear) orchestrator
@@ -1321,6 +1328,176 @@ for _, span := range tracer.Spans() {
               />
             </Section>
 
+            {/* OpenTelemetry Export */}
+            <Section id="otel" title="OpenTelemetry Export">
+              <P>
+                The OTLP exporter sends GoGrid trace spans to any OpenTelemetry-compatible
+                backend — Jaeger, Zipkin, Grafana Tempo, and others. Built entirely with
+                the Go standard library — no external OTel SDK required.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/trace/otel"
+
+exporter := otel.NewExporter(
+    otel.WithEndpoint("http://localhost:4318/v1/traces"),
+    otel.WithServiceName("my-agent-service"),
+    otel.WithServiceVersion("1.0.0"),
+    otel.WithBatchSize(100),
+    otel.WithFlushInterval(5 * time.Second),
+)
+defer exporter.Shutdown()
+
+// Use as any tracer
+a := agent.New("assistant",
+    agent.WithTracer(exporter),
+    agent.WithProvider(provider),
+    agent.WithModel("gpt-4o"),
+)
+result, _ := a.Run(ctx, "hello")`}
+                filename="OTLP exporter"
+              />
+              <H3>Batching & Flushing</H3>
+              <P>
+                Spans are batched in memory and flushed periodically or when the batch
+                size is reached. <Code>Shutdown</Code> sends all remaining spans.
+              </P>
+              <CodeBlock
+                code={`// Spans are sent as OTLP JSON over HTTP POST
+// Content-Type: application/json
+// Payload follows the OTLP JSON span format with:
+//   - resourceSpans[].resource.attributes: service.name, service.version
+//   - scopeSpans[].spans[]: traceId, spanId, parentSpanId, name, kind, timestamps
+//   - Attributes prefixed with "gogrid." (e.g., gogrid.agent.name)
+//   - exception.message for error spans`}
+                filename="OTLP format"
+              />
+              <H3>Semantic Conventions</H3>
+              <P>
+                GoGrid spans follow semantic conventions for attribute naming.
+              </P>
+              <div className="space-y-4 mb-6">
+                <Card title="gogrid.agent.name" desc="The agent's name. Attached to agent.run spans." />
+                <Card title="gogrid.llm.model" desc="The LLM model used. Attached to llm.complete spans." />
+                <Card title="gogrid.tool.name" desc="The tool's name. Attached to tool.execute spans." />
+                <Card title="gogrid.cost.usd" desc="Cost in USD. Attached to agent.run spans." />
+              </div>
+            </Section>
+
+            {/* Structured Logging */}
+            <Section id="structured-logging" title="Structured Logging">
+              <P>
+                The <Code>trace/log</Code> package provides structured JSON logging with
+                automatic trace correlation. When a span exists in the context, the logger
+                includes <Code>trace_id</Code> and <Code>span_id</Code> in every log line.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/trace/log"
+
+logger := log.New(os.Stdout, log.Info)
+
+// Basic logging
+logger.Info("agent started", "agent", "researcher", "model", "gpt-4o")
+
+// Context-aware logging with trace correlation
+logger.InfoCtx(ctx, "LLM call complete", "tokens", "150", "model", "gpt-4o")
+
+// Output (JSON):
+// {"level":"info","time":"2026-02-16T12:00:00Z","msg":"LLM call complete",
+//  "trace_id":"abc123","span_id":"def456",
+//  "fields":{"tokens":"150","model":"gpt-4o"}}`}
+                filename="structured logging"
+              />
+              <H3>Log Levels</H3>
+              <div className="space-y-4 mb-6">
+                <Card title="Debug" desc="Most verbose. Use for detailed diagnostic information." />
+                <Card title="Info" desc="Default level. Normal operational messages." />
+                <Card title="Warn" desc="Potential issues that don't prevent operation." />
+                <Card title="Error" desc="Failures that need attention." />
+              </div>
+              <H3>File Logging with Rotation</H3>
+              <P>
+                <Code>FileWriter</Code> writes to disk with automatic size-based rotation.
+                Configurable max file size and number of rotated files to keep.
+              </P>
+              <CodeBlock
+                code={`fw, err := log.NewFileWriter("/var/log/gogrid.log", log.FileConfig{
+    MaxSize:  10 * 1024 * 1024, // 10 MB per file
+    MaxFiles: 5,                // keep 5 rotated files
+})
+if err != nil {
+    panic(err)
+}
+defer fw.Close()
+
+logger := log.New(fw, log.Debug)
+logger.Info("agent started")
+// Rotated files: gogrid.log, gogrid.log.1, gogrid.log.2, ...`}
+                filename="file logging"
+              />
+            </Section>
+
+            {/* Metrics */}
+            <Section id="metrics" title="Metrics">
+              <P>
+                GoGrid provides Prometheus-compatible metrics with no external dependencies.
+                The <Code>metrics.Collector</Code> wraps any tracer and automatically populates
+                counters, gauges, and histograms from trace spans.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/trace/metrics"
+
+reg := metrics.NewRegistry()
+collector := metrics.NewCollector(innerTracer, reg)
+
+// Use collector as the tracer — metrics are recorded automatically
+a := agent.New("assistant",
+    agent.WithTracer(collector),
+    agent.WithProvider(provider),
+    agent.WithModel("gpt-4o"),
+)
+
+// Expose metrics for Prometheus scraping
+http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+    fmt.Fprint(w, reg.Export())
+})`}
+                filename="metrics"
+              />
+              <H3>Auto-Collected Metrics</H3>
+              <div className="space-y-4 mb-6">
+                <Card title="gogrid_agent_runs_total" desc="Total agent runs, labeled by agent name and status (ok/error)." />
+                <Card title="gogrid_agent_run_duration_seconds" desc="Histogram of agent run durations." />
+                <Card title="gogrid_llm_calls_total" desc="Total LLM calls, labeled by model and status." />
+                <Card title="gogrid_llm_call_duration_seconds" desc="Histogram of LLM call latencies." />
+                <Card title="gogrid_llm_tokens_total" desc="Total tokens consumed, labeled by model and type (prompt/completion)." />
+                <Card title="gogrid_tool_executions_total" desc="Total tool executions, labeled by tool name and status." />
+                <Card title="gogrid_tool_execution_duration_seconds" desc="Histogram of tool execution durations." />
+                <Card title="gogrid_memory_operations_total" desc="Total memory operations, labeled by operation type (load/save)." />
+                <Card title="gogrid_cost_usd_total" desc="Total cost in USD, labeled by agent and model." />
+              </div>
+              <H3>Custom Metrics</H3>
+              <P>
+                Create your own counters, gauges, and histograms for application-specific metrics.
+              </P>
+              <CodeBlock
+                code={`reg := metrics.NewRegistry()
+
+// Counters
+requests := reg.Counter("http_requests_total", "Total HTTP requests")
+requests.Inc(map[string]string{"method": "GET", "status": "200"})
+
+// Gauges
+connections := reg.Gauge("active_connections", "Active connections")
+connections.Set(42, map[string]string{"server": "web-1"})
+
+// Histograms (custom buckets)
+latency := reg.Histogram("request_duration_seconds", "Request latency",
+    0.01, 0.05, 0.1, 0.5, 1, 5)
+latency.Observe(0.123, map[string]string{"handler": "api"})`}
+                filename="custom metrics"
+              />
+            </Section>
+
             {/* Cost Tracking */}
             <Section id="cost-tracking" title="Cost Tracking">
               <P>
@@ -1362,6 +1539,73 @@ t := team.New("team",
         result.MemoryStats.TotalSize)
 }`}
                 filename="memory stats"
+              />
+            </Section>
+
+            {/* Cost Governance */}
+            <Section id="cost-governance" title="Cost Governance">
+              <P>
+                Advanced cost governance features for production deployments. Set budgets
+                with threshold alerts, allocate costs to specific entities, and generate
+                aggregate reports.
+              </P>
+              <H3>Budget Alerts</H3>
+              <P>
+                Register a callback that fires when cost crosses threshold fractions of
+                a configured budget. Each threshold fires at most once.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/cost"
+
+tracker := cost.NewTracker()
+tracker.SetBudget(10.00) // $10 budget
+
+tracker.OnBudgetThreshold(func(threshold, current float64) {
+    fmt.Printf("ALERT: %.0f%% of budget reached ($%.2f)\\n",
+        threshold*100, current)
+}, 0.5, 0.8, 1.0) // alerts at 50%, 80%, 100%
+
+// As costs accumulate, alerts fire automatically
+tracker.Add("gpt-4o", usage) // triggers 50% alert at $5`}
+                filename="budget alerts"
+              />
+              <H3>Cost Allocation</H3>
+              <P>
+                Attribute costs to specific entities — agents, teams, pipelines, or any
+                named component. Track which parts of your system spend the most.
+              </P>
+              <CodeBlock
+                code={`// Attribute costs to specific entities
+tracker.AddForEntity("gpt-4o", "research-agent", usage1)
+tracker.AddForEntity("gpt-4o", "summary-agent", usage2)
+tracker.AddForEntity("gpt-4o-mini", "research-agent", usage3)
+
+// Query per-entity costs
+researchCost := tracker.EntityCost("research-agent")
+summaryCost := tracker.EntityCost("summary-agent")
+
+fmt.Printf("Research: $%.4f, Summary: $%.4f\\n", researchCost, summaryCost)`}
+                filename="cost allocation"
+              />
+              <H3>Cost Reports</H3>
+              <P>
+                Generate aggregate reports breaking down costs by model and entity.
+              </P>
+              <CodeBlock
+                code={`report := tracker.Report()
+fmt.Printf("Total: $%.4f across %d calls\\n", report.TotalCost, report.RecordCount)
+
+// By model
+for model, mr := range report.ByModel {
+    fmt.Printf("  %s: %d calls, $%.4f, %d tokens\\n",
+        model, mr.Calls, mr.Cost, mr.Usage.TotalTokens)
+}
+
+// By entity
+for entity, cost := range report.ByEntity {
+    fmt.Printf("  %s: $%.4f\\n", entity, cost)
+}`}
+                filename="cost reports"
               />
             </Section>
           </motion.div>

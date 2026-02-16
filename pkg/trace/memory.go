@@ -19,7 +19,7 @@ func NewInMemory() *InMemory {
 
 // StartSpan begins a new span linked to any parent span in the context.
 func (t *InMemory) StartSpan(ctx context.Context, name string) (context.Context, *Span) {
-	return newSpan(ctx, name)
+	return NewSpan(ctx, name)
 }
 
 // EndSpan records the completed span.

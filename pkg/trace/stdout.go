@@ -22,7 +22,7 @@ func NewStdout(w io.Writer) *Stdout {
 
 // StartSpan begins a new span linked to any parent span in the context.
 func (t *Stdout) StartSpan(ctx context.Context, name string) (context.Context, *Span) {
-	return newSpan(ctx, name)
+	return NewSpan(ctx, name)
 }
 
 // EndSpan records the span end time and writes it as JSON.
