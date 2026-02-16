@@ -261,7 +261,7 @@ func TestInMemoryStats(t *testing.T) {
 	}
 
 	_ = m.Save(ctx, "a", []llm.Message{
-		llm.NewUserMessage("hello"),     // 5 bytes
+		llm.NewUserMessage("hello"),      // 5 bytes
 		llm.NewAssistantMessage("world"), // 5 bytes
 	})
 	_ = m.Save(ctx, "b", []llm.Message{

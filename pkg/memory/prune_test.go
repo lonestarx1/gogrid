@@ -154,7 +154,7 @@ func TestAnyPolicyShouldPrune(t *testing.T) {
 	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name string
+		name  string
 		entry Entry
 		want  bool
 	}{

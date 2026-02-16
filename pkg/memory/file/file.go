@@ -200,9 +200,13 @@ func (m *Memory) Prune(_ context.Context, policy memory.PrunePolicy) (int, error
 		}
 
 		if len(kept) == 0 {
-			// Remove both files.
-			os.Remove(m.dataPath(key))
-			os.Remove(m.metaPath(key))
+			// Remove both files; ignore not-exist errors.
+			if err := os.Remove(m.dataPath(key)); err != nil && !os.IsNotExist(err) {
+				return removed, fmt.Errorf("file memory: remove %q: %w", key, err)
+			}
+			if err := os.Remove(m.metaPath(key)); err != nil && !os.IsNotExist(err) {
+				return removed, fmt.Errorf("file memory: remove meta %q: %w", key, err)
+			}
 			continue
 		}
 
