@@ -1,14 +1,12 @@
 package agent
 
 import (
-	"context"
-	"errors"
 	"time"
 
-	"github.com/lonestarx1/gogrid/internal/id"
 	"github.com/lonestarx1/gogrid/pkg/llm"
 	"github.com/lonestarx1/gogrid/pkg/memory"
 	"github.com/lonestarx1/gogrid/pkg/tool"
+	"github.com/lonestarx1/gogrid/pkg/trace"
 )
 
 // Agent is the fundamental unit of work in GoGrid.
@@ -21,6 +19,7 @@ type Agent struct {
 	model        string
 	provider     llm.Provider
 	memory       memory.Memory
+	tracer       trace.Tracer
 	config       Config
 }
 
@@ -63,7 +62,8 @@ type Option func(*Agent)
 // The name is required and identifies the agent in traces and logs.
 func New(name string, opts ...Option) *Agent {
 	a := &Agent{
-		name: name,
+		name:   name,
+		tracer: trace.Noop{},
 	}
 	for _, opt := range opts {
 		opt(a)
@@ -106,6 +106,13 @@ func WithMemory(mem memory.Memory) Option {
 	}
 }
 
+// WithTracer sets the tracer for observability.
+func WithTracer(t trace.Tracer) Option {
+	return func(a *Agent) {
+		a.tracer = t
+	}
+}
+
 // WithConfig sets the agent's execution configuration.
 func WithConfig(config Config) Option {
 	return func(a *Agent) {
@@ -115,20 +122,3 @@ func WithConfig(config Config) Option {
 
 // Name returns the agent's name.
 func (a *Agent) Name() string { return a.name }
-
-// Run executes the agent with the given user input.
-// The agent loop (LLM calls, tool execution, iteration) is implemented in Phase 1.
-func (a *Agent) Run(ctx context.Context, input string) (*Result, error) {
-	if a.provider == nil {
-		return nil, errors.New("agent: provider is required")
-	}
-	if a.model == "" {
-		return nil, errors.New("agent: model is required")
-	}
-
-	return &Result{
-		RunID:   id.New(),
-		Message: llm.NewAssistantMessage(""),
-		History: []llm.Message{},
-	}, nil
-}
