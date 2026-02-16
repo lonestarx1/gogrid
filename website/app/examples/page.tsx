@@ -35,6 +35,11 @@ const examples = [
     desc: "A leader agent synthesizes team responses into a final decision.",
   },
   {
+    id: "review-graph",
+    title: "Review Loop Graph",
+    desc: "Draft, review, revise loop with conditional edges and DOT export.",
+  },
+  {
     id: "research-pipeline",
     title: "Research Pipeline",
     desc: "Three-stage pipeline: research, analyze, summarize — with retry and progress.",
@@ -521,6 +526,107 @@ func min(a, b int) int {
         return a
     }
     return b
+}`}
+            />
+          </ExampleSection>
+
+          {/* Review Loop Graph */}
+          <ExampleSection
+            id="review-graph"
+            title="Review Loop Graph"
+            desc="A graph with conditional edges: draft is reviewed, and if it needs revision, it loops back through revise → review until approved, then publishes."
+          >
+            <CodeBlock
+              filename="examples/review-graph/main.go"
+              code={`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+    "strings"
+    "time"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/llm/openai"
+    "github.com/lonestarx1/gogrid/pkg/orchestrator/graph"
+    "github.com/lonestarx1/gogrid/pkg/trace"
+)
+
+func main() {
+    ctx := context.Background()
+    provider := openai.New(os.Getenv("OPENAI_API_KEY"))
+    tracer := trace.NewStdout(os.Stdout)
+
+    draft := agent.New("draft",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Write a short blog post about the given topic."),
+        agent.WithTracer(tracer),
+    )
+    review := agent.New("review",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Review this draft. If it needs work, say 'needs revision' and explain. If good, say 'approved'."),
+        agent.WithTracer(tracer),
+    )
+    revise := agent.New("revise",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Revise the draft based on the review feedback."),
+        agent.WithTracer(tracer),
+    )
+    publish := agent.New("publish",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Format the approved draft for publication. Add a title and summary."),
+        agent.WithTracer(tracer),
+    )
+
+    g, err := graph.NewBuilder("review-pipeline").
+        AddNode("draft", draft).
+        AddNode("review", review).
+        AddNode("revise", revise).
+        AddNode("publish", publish).
+        AddEdge("draft", "review").
+        AddEdge("review", "revise", graph.When(func(out string) bool {
+            return strings.Contains(strings.ToLower(out), "needs revision")
+        })).
+        AddEdge("review", "publish", graph.When(func(out string) bool {
+            return strings.Contains(strings.ToLower(out), "approved")
+        })).
+        AddEdge("revise", "review").
+        Options(
+            graph.WithConfig(graph.Config{
+                MaxIterations: 3,
+                Timeout:       2 * time.Minute,
+                CostBudget:    2.00,
+            }),
+            graph.WithTracer(tracer),
+        ).
+        Build()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Export DOT for visualization
+    fmt.Println("=== Graph Structure (DOT) ===")
+    fmt.Println(g.DOT())
+
+    result, err := g.Run(ctx, "The future of AI agents in production systems")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println("=== Published Output ===")
+    fmt.Println(result.Output)
+    fmt.Printf("\\nCost: $%.4f | Tokens: %d\\n", result.TotalCost, result.TotalUsage.TotalTokens)
+
+    // Show iteration counts
+    for name, results := range result.NodeResults {
+        fmt.Printf("  %s: %d iteration(s)\\n", name, len(results))
+    }
 }`}
             />
           </ExampleSection>
