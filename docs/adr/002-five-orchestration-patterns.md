@@ -6,7 +6,7 @@ Accepted
 
 ## Date
 
-2025-01-15
+February 2026
 
 ## Context
 
