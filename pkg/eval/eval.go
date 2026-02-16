@@ -1,7 +1,3 @@
-// Package eval provides an evaluation framework for scoring GoGrid
-// agent outputs. It includes built-in evaluators for exact match,
-// substring containment, cost budgets, tool usage, and LLM-as-judge,
-// plus a Suite for running multiple evaluators against a single result.
 package eval
 
 import (

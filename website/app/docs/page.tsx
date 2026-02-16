@@ -38,6 +38,9 @@ const sections = [
   { id: "metrics", label: "Metrics" },
   { id: "cost-tracking", label: "Cost Tracking" },
   { id: "cost-governance", label: "Cost Governance" },
+  { id: "mock-provider", label: "Mock Provider" },
+  { id: "evaluation", label: "Evaluation Framework" },
+  { id: "benchmarks", label: "Benchmarks" },
 ];
 
 export default function DocsPage() {
@@ -135,7 +138,8 @@ export default function DocsPage() {
 │   ├── llm/            # LLM provider interfaces and implementations
 │   │   ├── openai/     # OpenAI provider
 │   │   ├── anthropic/  # Anthropic provider
-│   │   └── gemini/     # Google Gemini provider
+│   │   ├── gemini/     # Google Gemini provider
+│   │   └── mock/       # Mock provider for testing
 │   ├── memory/         # Memory interfaces and implementations
 │   │   ├── file/       # File-backed memory
 │   │   ├── shared/     # Shared memory for teams
@@ -146,6 +150,8 @@ export default function DocsPage() {
 │   │   ├── log/        # Structured JSON logging
 │   │   └── metrics/    # Prometheus-compatible metrics
 │   ├── cost/           # Cost tracking, budgets, and governance
+│   ├── eval/           # Evaluation framework and benchmarks
+│   │   └── bench/      # Performance benchmarks
 │   └── orchestrator/
 │       ├── team/       # Team (chat room) orchestrator
 │       ├── pipeline/   # Pipeline (linear) orchestrator
@@ -2036,6 +2042,190 @@ for entity, cost := range report.ByEntity {
     fmt.Printf("  %s: $%.4f\\n", entity, cost)
 }`}
                 filename="cost reports"
+              />
+            </Section>
+
+            {/* Mock Provider */}
+            <Section id="mock-provider" title="Mock Provider">
+              <P>
+                The <Code>pkg/llm/mock</Code> package provides a configurable mock LLM
+                provider for testing GoGrid agents, teams, pipelines, and graphs without
+                API keys.
+              </P>
+              <H3>Basic Usage</H3>
+              <CodeBlock
+                code={`import (
+    "github.com/lonestarx1/gogrid/pkg/llm"
+    "github.com/lonestarx1/gogrid/pkg/llm/mock"
+)
+
+// Fixed response for all calls.
+provider := mock.New(mock.WithFallback(&llm.Response{
+    Message: llm.NewAssistantMessage("mock response"),
+    Usage:   llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
+    Model:   "mock",
+}))
+
+agent.New("my-agent", agent.WithProvider(provider), agent.WithModel("mock"))`}
+                filename="mock provider"
+              />
+              <H3>Sequential Responses</H3>
+              <P>
+                Queue multiple responses for multi-turn conversations. The provider
+                returns them in order, then falls back to the fallback response.
+              </P>
+              <CodeBlock
+                code={`toolCallResp := &llm.Response{
+    Message: llm.Message{
+        Role:      llm.RoleAssistant,
+        ToolCalls: []llm.ToolCall{{ID: "tc-1", Function: "search", Arguments: []byte(\`{"q":"test"}\`)}},
+    },
+    Usage: llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
+    Model: "mock",
+}
+finalResp := &llm.Response{
+    Message: llm.NewAssistantMessage("found it"),
+    Usage:   llm.Usage{PromptTokens: 20, CompletionTokens: 10, TotalTokens: 30},
+    Model:   "mock",
+}
+
+provider := mock.New(
+    mock.WithResponses(toolCallResp, finalResp),
+    mock.WithFallback(finalResp),
+)`}
+                filename="sequential responses"
+              />
+              <H3>Error Injection & Latency</H3>
+              <CodeBlock
+                code={`// Always fail.
+provider := mock.New(mock.WithError(errors.New("api unavailable")))
+
+// Fail first 2 calls, then succeed.
+provider = mock.New(
+    mock.WithFailCount(2),
+    mock.WithFallback(successResponse),
+)
+
+// Simulate 100ms latency (respects context cancellation).
+provider = mock.New(
+    mock.WithDelay(100 * time.Millisecond),
+    mock.WithFallback(response),
+)`}
+                filename="error injection"
+              />
+              <H3>Call Recording</H3>
+              <P>
+                The mock provider records all calls for assertions in tests.
+              </P>
+              <CodeBlock
+                code={`provider := mock.New(mock.WithFallback(response))
+// ... run agent ...
+
+fmt.Println(provider.Calls())    // Number of Complete calls
+history := provider.History()     // All recorded call params
+provider.Reset()                  // Clear history, keep config`}
+                filename="call recording"
+              />
+            </Section>
+
+            {/* Evaluation Framework */}
+            <Section id="evaluation" title="Evaluation Framework">
+              <P>
+                The <Code>pkg/eval</Code> package provides composable evaluators for
+                scoring agent outputs. Evaluators measure both output quality and
+                operational metrics like cost and tool usage.
+              </P>
+              <H3>Evaluator Interface</H3>
+              <CodeBlock
+                code={`type Evaluator interface {
+    Name() string
+    Evaluate(ctx context.Context, result *agent.Result) (Score, error)
+}
+
+type Score struct {
+    Pass   bool    // Primary signal: did the result meet criteria?
+    Value  float64 // Normalized 0.0-1.0 for trend analysis
+    Reason string  // Human-readable explanation
+}`}
+                filename="eval.go"
+              />
+              <H3>Built-in Evaluators</H3>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/eval"
+
+// Exact string match.
+eval.NewExactMatch("expected output")
+
+// Substring containment (Value = fraction of substrings found).
+eval.NewContains("Go", "concurrency", "goroutines")
+
+// Cost budget check.
+eval.NewCostWithin(0.05) // $0.05 USD max
+
+// Tool usage expectations.
+eval.NewToolUse(eval.ToolExpectation{
+    Name:     "search",
+    MinCalls: 1,
+})
+
+// LLM-as-judge (scores 0-10, passes at >= 7).
+eval.NewLLMJudge(provider, "gpt-4o", "Rate clarity and accuracy.")`}
+                filename="built-in evaluators"
+              />
+              <H3>Evaluation Suite</H3>
+              <P>
+                Compose multiple evaluators into a suite. The suite runs all evaluators
+                and aggregates results. <Code>SuiteResult.Pass</Code> is true only if
+                every evaluator passed.
+              </P>
+              <CodeBlock
+                code={`suite := eval.NewSuite(
+    eval.NewContains("Go", "compiled"),
+    eval.NewCostWithin(0.05),
+    eval.NewFunc("min_length", func(_ context.Context, r *agent.Result) (eval.Score, error) {
+        if len(r.Message.Content) >= 20 {
+            return eval.Score{Pass: true, Value: 1.0, Reason: "sufficient"}, nil
+        }
+        return eval.Score{Pass: false, Value: 0.0, Reason: "too short"}, nil
+    }),
+)
+
+result, err := suite.Run(ctx, agentResult)
+fmt.Println(result.Pass) // true if all passed
+
+for name, score := range result.Scores {
+    fmt.Printf("%s: pass=%v value=%.2f reason=%s\\n",
+        name, score.Pass, score.Value, score.Reason)
+}`}
+                filename="evaluation suite"
+              />
+            </Section>
+
+            {/* Benchmarks */}
+            <Section id="benchmarks" title="Benchmarks">
+              <P>
+                The <Code>pkg/eval/bench</Code> package provides benchmarks for GoGrid{"'"}s
+                core patterns using the mock provider. All benchmarks measure framework
+                overhead, not LLM latency.
+              </P>
+              <CodeBlock
+                code={`# Run all benchmarks
+go test -bench=. ./pkg/eval/bench/
+
+# With memory profiling
+go test -bench=. -benchmem ./pkg/eval/bench/
+
+# Available benchmarks:
+# BenchmarkAgentRun              - Basic agent execution
+# BenchmarkAgentRunWithToolUse   - Agent with tool calling
+# BenchmarkAgentRunParallel      - Concurrent agent execution
+# BenchmarkPipelineThreeStages   - Fixed three-stage pipeline
+# BenchmarkPipelineScaling       - Pipeline: 1, 3, 5, 10 stages
+# BenchmarkTeamTwoMembers        - Two-agent team
+# BenchmarkTeamScaling           - Team: 1, 2, 5, 10, 20 members
+# BenchmarkSharedMemorySaveLoad  - Memory load/save ops
+# BenchmarkSharedMemoryContention - Memory: 1, 2, 5, 10 writers`}
+                filename="terminal"
               />
             </Section>
           </motion.div>
