@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt vet clean ci
+.PHONY: build test lint fmt vet clean ci website
 
 # Build the gogrid CLI binary
 build:
@@ -20,8 +20,12 @@ fmt:
 vet:
 	go vet ./...
 
-# Run the same checks as GitHub CI (build + vet + test + lint)
-ci: build vet test lint
+# Build the website (Next.js static export)
+website:
+	cd website && yarn build
+
+# Run the same checks as GitHub CI (build + vet + test + lint + website)
+ci: build vet test lint website
 
 # Remove build artifacts
 clean:

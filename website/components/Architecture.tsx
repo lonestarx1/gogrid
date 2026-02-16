@@ -13,7 +13,7 @@ const patterns = [
     name: "Team (Chat Room)",
     icon: "●●●",
     description:
-      "Multiple domain experts collaborating in real-time — concurrent execution, debate, and consensus via pub/sub messaging with shared memory.",
+      "Multiple domain experts collaborating in real-time — concurrent execution, debate, and consensus via pub/sub messaging with shared memory. Optional coordinator agent synthesizes the final decision.",
   },
   {
     name: "Pipeline (Linear)",
