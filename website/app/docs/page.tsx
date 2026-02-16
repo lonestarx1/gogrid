@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import CodeBlock from "@/components/CodeBlock";
 
@@ -24,9 +24,37 @@ const sections = [
 
 export default function DocsPage() {
   const [active, setActive] = useState("getting-started");
+  // Scroll-spy: pick the section whose top has most recently scrolled past the threshold
+  useEffect(() => {
+    const ids = sections.map((s) => s.id);
+    const threshold = 100; // px from top of viewport
+
+    const onScroll = () => {
+      // If scrolled to bottom, activate last section
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 2) {
+        setActive(ids[ids.length - 1]);
+        return;
+      }
+
+      let current = ids[0];
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= threshold) {
+          current = id;
+        } else {
+          break;
+        }
+      }
+      setActive(current);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const scrollTo = (id: string) => {
-    setActive(id);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
