@@ -49,6 +49,11 @@ const examples = [
     title: "Pipeline State Transfer",
     desc: "State ownership enforced across pipeline stages with audit trail.",
   },
+  {
+    id: "dynamic-research",
+    title: "Dynamic Research Coordinator",
+    desc: "An agent dynamically spawns teams, pipelines, and sub-agents at runtime.",
+  },
 ];
 
 export default function ExamplesPage() {
@@ -797,6 +802,136 @@ func main() {
     for _, entry := range state.AuditLog() {
         fmt.Printf("  %s -> %s (generation %d)\\n",
             entry.From, entry.To, entry.Generation)
+    }
+}`}
+            />
+          </ExampleSection>
+
+          {/* Dynamic Research Coordinator */}
+          <ExampleSection
+            id="dynamic-research"
+            title="Dynamic Research Coordinator"
+            desc="A coordinator agent dynamically spawns sub-agents and a pipeline at runtime based on the task. Demonstrates resource governance, async futures, and aggregate metrics."
+          >
+            <CodeBlock
+              filename="examples/dynamic-research/main.go"
+              code={`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+    "time"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/llm/openai"
+    "github.com/lonestarx1/gogrid/pkg/orchestrator/dynamic"
+    "github.com/lonestarx1/gogrid/pkg/orchestrator/pipeline"
+    "github.com/lonestarx1/gogrid/pkg/trace"
+)
+
+func main() {
+    ctx := context.Background()
+    provider := openai.New(os.Getenv("OPENAI_API_KEY"))
+    tracer := trace.NewStdout(os.Stdout)
+
+    // Create a runtime with resource governance
+    rt := dynamic.New("coordinator",
+        dynamic.WithConfig(dynamic.Config{
+            MaxConcurrent: 3,
+            MaxDepth:      2,
+            CostBudget:    5.00,
+        }),
+        dynamic.WithTracer(tracer),
+    )
+    ctx = rt.Context(ctx)
+
+    // Define child agents
+    researcher := agent.New("researcher",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Find key facts and data about the given topic."),
+    )
+    analyst := agent.New("analyst",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Analyze data and identify trends."),
+    )
+    writer := agent.New("writer",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("Write a clear summary from the analysis."),
+    )
+
+    topic := "Impact of AI agents on enterprise software"
+
+    // Phase 1: Spawn two researchers concurrently using Go
+    fmt.Println("Phase 1: Research (parallel)")
+    f1 := rt.Go(ctx, "research-papers", func(ctx context.Context) (string, error) {
+        r, err := rt.SpawnAgent(ctx, researcher, "Find academic papers about: "+topic)
+        if err != nil {
+            return "", err
+        }
+        return r.Message.Content, nil
+    })
+    f2 := rt.Go(ctx, "research-industry", func(ctx context.Context) (string, error) {
+        r, err := rt.SpawnAgent(ctx, analyst, "Find industry reports about: "+topic)
+        if err != nil {
+            return "", err
+        }
+        return r.Message.Content, nil
+    })
+
+    papers, err := f1.Wait(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    industry, err := f2.Wait(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Phase 2: Feed into a summarization pipeline
+    fmt.Println("\\nPhase 2: Summarize (pipeline)")
+    combined := "Academic Research:\\n" + papers + "\\n\\nIndustry Analysis:\\n" + industry
+
+    summarizer := pipeline.New("summarize",
+        pipeline.WithStages(
+            pipeline.Stage{
+                Name:  "synthesize",
+                Agent: analyst,
+                InputTransform: func(in string) string {
+                    return "Synthesize these findings into key insights:\\n\\n" + in
+                },
+            },
+            pipeline.Stage{
+                Name:  "write",
+                Agent: writer,
+                InputTransform: func(in string) string {
+                    return "Write an executive summary from these insights:\\n\\n" + in
+                },
+            },
+        ),
+        pipeline.WithConfig(pipeline.Config{Timeout: time.Minute}),
+    )
+
+    pResult, err := rt.SpawnPipeline(ctx, summarizer, combined)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println("\\n=== Executive Summary ===")
+    fmt.Println(pResult.Output)
+
+    // Aggregate metrics from all children
+    res := rt.Result()
+    fmt.Printf("\\nChildren: %d | Total Cost: $%.4f | Tokens: %d\\n",
+        len(res.Children), res.TotalCost, res.TotalUsage.TotalTokens)
+    fmt.Printf("Remaining Budget: $%.4f\\n", rt.RemainingBudget())
+
+    for _, child := range res.Children {
+        fmt.Printf("  [%s] %s — $%.4f\\n", child.Type, child.Name, child.Cost)
     }
 }`}
             />

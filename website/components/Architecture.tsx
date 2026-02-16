@@ -31,7 +31,7 @@ const patterns = [
     name: "Dynamic Orchestration",
     icon: "● → ✱",
     description:
-      "Agents spawn child agents, teams, pipelines, or graphs at runtime. Unlimited scaling, minimal assumptions.",
+      "A Runtime enables agents to spawn child agents, teams, pipelines, or graphs at runtime. Resource governance, async futures, and aggregate metrics.",
   },
 ];
 

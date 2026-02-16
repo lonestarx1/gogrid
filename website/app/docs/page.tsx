@@ -25,6 +25,9 @@ const sections = [
   { id: "graph", label: "Graph" },
   { id: "graph-builder", label: "Graph Builder" },
   { id: "graph-advanced", label: "Loops & Conditions" },
+  { id: "dynamic", label: "Dynamic Orchestration" },
+  { id: "dynamic-governance", label: "Resource Governance" },
+  { id: "dynamic-async", label: "Async & Futures" },
   { id: "tracing", label: "Tracing" },
   { id: "cost-tracking", label: "Cost Tracking" },
 ];
@@ -133,7 +136,10 @@ export default function DocsPage() {
 │   ├── trace/          # Tracing and observability
 │   ├── cost/           # Cost tracking and budgets
 │   └── orchestrator/
-│       └── team/       # Team (chat room) orchestrator
+│       ├── team/       # Team (chat room) orchestrator
+│       ├── pipeline/   # Pipeline (linear) orchestrator
+│       ├── graph/      # Graph orchestrator
+│       └── dynamic/    # Dynamic orchestration runtime
 ├── internal/
 │   └── id/             # ID generation
 └── cmd/
@@ -1047,6 +1053,167 @@ graph.Always()`}
               />
             </Section>
 
+            {/* Dynamic Orchestration */}
+            <Section id="dynamic" title="Dynamic Orchestration">
+              <P>
+                Dynamic Orchestration is GoGrid&apos;s most powerful pattern. A <Code>Runtime</Code> enables
+                agents to spawn child agents, teams, pipelines, or graphs at runtime — the executing
+                agent decides which orchestration to use based on the problem at hand.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/orchestrator/dynamic"
+
+rt := dynamic.New("coordinator",
+    dynamic.WithConfig(dynamic.Config{
+        MaxConcurrent: 5,
+        MaxDepth:      3,
+        CostBudget:    2.00,
+    }),
+    dynamic.WithTracer(tracer),
+)
+
+// Embed the runtime in context for child access
+ctx := rt.Context(ctx)
+
+// Spawn any orchestration pattern as a child
+agentResult, _ := rt.SpawnAgent(ctx, researchAgent, "Find papers on X")
+teamResult, _  := rt.SpawnTeam(ctx, reviewTeam, agentResult.Message.Content)
+pipeResult, _  := rt.SpawnPipeline(ctx, summarizePipeline, teamResult.Decision.Content)
+graphResult, _ := rt.SpawnGraph(ctx, publishGraph, pipeResult.Output)
+
+// Aggregate metrics across all children
+res := rt.Result()
+fmt.Printf("Children: %d, Cost: $%.4f\\n", len(res.Children), res.TotalCost)`}
+                filename="dynamic orchestration"
+              />
+              <H3>Spawning Children</H3>
+              <P>
+                Four spawn methods correspond to GoGrid&apos;s four orchestration patterns. Each
+                blocks until the child completes, inherits the parent&apos;s tracing context,
+                and records cost/usage metrics.
+              </P>
+              <CodeBlock
+                code={`// Spawn a single agent
+result, err := rt.SpawnAgent(ctx, agent, "input")
+
+// Spawn a team
+result, err := rt.SpawnTeam(ctx, team, "discuss this")
+
+// Spawn a pipeline
+result, err := rt.SpawnPipeline(ctx, pipeline, "process this")
+
+// Spawn a graph
+result, err := rt.SpawnGraph(ctx, graph, "route this")`}
+                filename="spawn methods"
+              />
+              <H3>Context Propagation</H3>
+              <P>
+                The runtime is stored in context so nested orchestrations can dynamically
+                spawn further children up to the configured depth limit.
+              </P>
+              <CodeBlock
+                code={`// Retrieve runtime from context (e.g., inside a tool)
+rt := dynamic.FromContext(ctx)
+if rt != nil {
+    // Spawn a sub-task from within a tool execution
+    result, _ := rt.SpawnAgent(ctx, helperAgent, "assist with this")
+}
+
+// Check current nesting depth
+depth := dynamic.DepthFromContext(ctx)`}
+                filename="context propagation"
+              />
+            </Section>
+
+            {/* Resource Governance */}
+            <Section id="dynamic-governance" title="Resource Governance">
+              <P>
+                The runtime enforces resource limits to prevent runaway costs, infinite recursion,
+                and resource exhaustion.
+              </P>
+              <div className="space-y-4 mb-6">
+                <Card title="MaxConcurrent" desc="Maximum number of children executing simultaneously. Uses a semaphore — excess spawns block until a slot is available." />
+                <Card title="MaxDepth" desc="Maximum nesting depth for recursive spawning. Prevents infinite recursion when children spawn further children. Defaults to 10." />
+                <Card title="CostBudget" desc="Maximum total cost in USD across all children. New spawns are rejected once the budget is exhausted." />
+              </div>
+              <CodeBlock
+                code={`rt := dynamic.New("governed",
+    dynamic.WithConfig(dynamic.Config{
+        MaxConcurrent: 3,  // at most 3 children running at once
+        MaxDepth:      4,  // max 4 levels of nesting
+        CostBudget:    1.00, // $1.00 total across all children
+    }),
+)
+
+// Check remaining budget before expensive operations
+remaining := rt.RemainingBudget() // -1 if unlimited`}
+                filename="resource governance"
+              />
+              <H3>Cascading Cancellation</H3>
+              <P>
+                All children use derived contexts. Canceling the parent context automatically
+                cancels all running children — no orphaned goroutines or wasted LLM calls.
+              </P>
+              <CodeBlock
+                code={`ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+defer cancel()
+
+ctx = rt.Context(ctx)
+
+// All spawned children will be canceled if the 30s timeout fires
+rt.SpawnAgent(ctx, slowAgent, "this might take a while")`}
+                filename="cascading cancellation"
+              />
+            </Section>
+
+            {/* Async & Futures */}
+            <Section id="dynamic-async" title="Async & Futures">
+              <P>
+                Use <Code>Go</Code> to launch children in the background. Returns a <Code>Future</Code> that
+                can be awaited or polled.
+              </P>
+              <CodeBlock
+                code={`// Launch multiple children concurrently
+f1 := rt.Go(ctx, "research", func(ctx context.Context) (string, error) {
+    r, err := rt.SpawnAgent(ctx, researchAgent, "find papers")
+    if err != nil {
+        return "", err
+    }
+    return r.Message.Content, nil
+})
+
+f2 := rt.Go(ctx, "analyze", func(ctx context.Context) (string, error) {
+    r, err := rt.SpawnAgent(ctx, analysisAgent, "analyze trends")
+    if err != nil {
+        return "", err
+    }
+    return r.Message.Content, nil
+})
+
+// Await results
+research, _ := f1.Wait(ctx)
+analysis, _ := f2.Wait(ctx)
+
+// Or wait for all background children at once
+rt.Wait()`}
+                filename="async spawning"
+              />
+              <H3>Future API</H3>
+              <CodeBlock
+                code={`// Wait blocks until the future completes or context is canceled
+output, err := future.Wait(ctx)
+
+// Done returns a channel that closes when the future completes
+select {
+case <-future.Done():
+    output, err := future.Wait(ctx) // returns immediately
+case <-ctx.Done():
+    // timeout
+}`}
+                filename="future API"
+              />
+            </Section>
+
             {/* Tracing */}
             <Section id="tracing" title="Tracing">
               <P>
@@ -1139,6 +1306,18 @@ for _, span := range tracer.Spans() {
 //   └─ graph.node (publish, iteration=1)
 //       └─ agent.run ...`}
                 filename="graph trace tree"
+              />
+              <H3>Dynamic Trace Spans</H3>
+              <CodeBlock
+                code={`// Trace tree for dynamic orchestration:
+// dynamic.spawn_agent (research)
+//   └─ agent.run ...
+// dynamic.spawn_team (debate)
+//   └─ team.run ...
+// dynamic.go (background-task)
+//   └─ dynamic.spawn_pipeline (summarize)
+//       └─ pipeline.run ...`}
+                filename="dynamic trace tree"
               />
             </Section>
 

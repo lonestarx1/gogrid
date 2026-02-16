@@ -43,7 +43,7 @@ Sequential handoff between specialists. Each agent completes its work, yields it
 Like a pipeline, but with conditional edges, parallel fan-out, fan-in merging, and loops. Agents execute concurrently in waves — when a node completes, its outgoing edges are evaluated and successor nodes fire when all dependencies are satisfied. Supports configurable iteration limits, cost budgets, timeouts, and exports to Graphviz DOT format for visualization.
 
 ### Dynamic Orchestration
-GoGrid's most powerful pattern. Agents can spawn child agents, child teams, child pipelines, or child graphs dynamically at runtime. Unlimited scaling with minimal assumptions about how a problem gets solved. For when the developer doesn't know — or shouldn't hardcode — the exact steps to a solution.
+GoGrid's most powerful pattern. A Runtime enables agents to spawn child agents, teams, pipelines, or graphs dynamically at runtime. Resource governance controls concurrency limits, nesting depth, and cost budgets across all spawned children. Async futures allow parallel child execution with aggregate metrics tracking.
 
 > All GoGrid patterns are composable. A team can contain pipelines. A graph node can spawn a dynamic orchestrator. The architecture adapts to the problem, not the other way around.
 
