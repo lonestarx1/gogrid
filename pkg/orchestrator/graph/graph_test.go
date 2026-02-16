@@ -587,9 +587,9 @@ func TestRunMultipleStartNodes(t *testing.T) {
 func TestRunNoStartNodes(t *testing.T) {
 	// All nodes have incoming edges (circular).
 	g := &Graph{
-		name:  "no-start",
-		nodes: map[string]*Node{"a": {name: "a", agent: newTestAgent("a", "")}},
-		edges: []Edge{{From: "a", To: "a"}},
+		name:     "no-start",
+		nodes:    map[string]*Node{"a": {name: "a", agent: newTestAgent("a", "")}},
+		edges:    []Edge{{From: "a", To: "a"}},
 		outgoing: map[string][]Edge{"a": {{From: "a", To: "a"}}},
 		incoming: map[string][]string{"a": {"a"}},
 		starts:   nil,

@@ -97,10 +97,10 @@ type Graph struct {
 	tracer trace.Tracer
 
 	// Derived from edges during Build.
-	outgoing map[string][]Edge // node -> outgoing edges
+	outgoing map[string][]Edge   // node -> outgoing edges
 	incoming map[string][]string // node -> list of source node names
-	starts   []string           // nodes with no incoming edges
-	ends     []string           // nodes with no outgoing edges
+	starts   []string            // nodes with no incoming edges
+	ends     []string            // nodes with no outgoing edges
 }
 
 // Option is a functional option for configuring a Graph.
