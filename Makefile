@@ -1,8 +1,10 @@
 .PHONY: build test lint fmt vet clean ci website
 
+VERSION ?= dev
+
 # Build the gogrid CLI binary
 build:
-	go build -o bin/gogrid ./cmd/gogrid
+	go build -ldflags "-X github.com/lonestarx1/gogrid/internal/cli.Version=$(VERSION)" -o bin/gogrid ./cmd/gogrid
 
 # Run all tests
 test:

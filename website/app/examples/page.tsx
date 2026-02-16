@@ -59,6 +59,21 @@ const examples = [
     title: "Full Observability Stack",
     desc: "OTLP export, structured logging, and Prometheus metrics — all wired together.",
   },
+  {
+    id: "cli-multi-agent",
+    title: "CLI Multi-Agent Project",
+    desc: "Define and run multiple agents from YAML — no Go code required.",
+  },
+  {
+    id: "cli-trace-cost",
+    title: "CLI Trace & Cost Inspection",
+    desc: "Inspect execution traces and cost breakdowns from the command line.",
+  },
+  {
+    id: "cli-scaffold",
+    title: "Project Scaffolding",
+    desc: "Scaffold a complete GoGrid project from a template in one command.",
+  },
 ];
 
 export default function ExamplesPage() {
@@ -939,6 +954,251 @@ func main() {
         fmt.Printf("  [%s] %s — $%.4f\\n", child.Type, child.Name, child.Cost)
     }
 }`}
+            />
+          </ExampleSection>
+
+          {/* CLI Multi-Agent Project */}
+          <ExampleSection
+            id="cli-multi-agent"
+            title="CLI Multi-Agent Project"
+            desc="Define multiple agents with different providers and models in gogrid.yaml, then run them from the command line. No Go code required — just YAML and API keys."
+          >
+            <CodeBlock
+              filename="gogrid.yaml"
+              code={`version: "1"
+
+agents:
+  # Research agent using Anthropic's Claude
+  researcher:
+    model: \${ANTHROPIC_MODEL:-claude-sonnet-4-5-20250929}
+    provider: anthropic
+    instructions: |
+      You are a technical researcher. When given a topic:
+      1. Explain the core concepts clearly
+      2. Provide concrete examples
+      3. Discuss trade-offs and alternatives
+      4. Mention common pitfalls
+      Be thorough but structured. Use headings and bullet points.
+    config:
+      max_turns: 10
+      max_tokens: 4096
+      temperature: 0.7
+      timeout: 2m
+      cost_budget: 0.50
+
+  # Code review agent using OpenAI's GPT-4o-mini
+  code-reviewer:
+    model: \${OPENAI_MODEL:-gpt-4o-mini}
+    provider: openai
+    instructions: |
+      You are a senior Go code reviewer. When given code:
+      1. Check for correctness and edge cases
+      2. Evaluate error handling
+      3. Assess naming and readability
+      4. Suggest improvements with code examples
+      Be constructive. Follow Go conventions and idioms.
+    config:
+      max_turns: 5
+      max_tokens: 2048
+      timeout: 60s
+      cost_budget: 0.10
+
+  # Summarization agent — fast and cheap
+  summarizer:
+    model: \${OPENAI_MODEL:-gpt-4o-mini}
+    provider: openai
+    instructions: |
+      Condense the input into 3-5 bullet points. Under 200 words.
+    config:
+      max_turns: 3
+      max_tokens: 1024
+      timeout: 30s
+      cost_budget: 0.05`}
+            />
+            <CodeBlock
+              filename="terminal"
+              code={`# Set API keys for the providers you use
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-proj-...
+
+# List all defined agents
+$ gogrid list
+NAME             PROVIDER    MODEL
+code-reviewer    openai      gpt-4o-mini
+researcher       anthropic   claude-sonnet-4-5-20250929
+summarizer       openai      gpt-4o-mini
+
+# Run the researcher agent
+$ gogrid run researcher -input "Explain how garbage collection works in Go"
+
+# Run the code reviewer
+$ gogrid run code-reviewer -input "Review this Go function:
+
+func fetchUser(id string) (*User, error) {
+    resp, err := http.Get(\\"https://api.example.com/users/\\" + id)
+    if err != nil {
+        return nil, err
+    }
+    var user User
+    json.NewDecoder(resp.Body).Decode(&user)
+    return &user, nil
+}"
+
+# Run the summarizer
+$ gogrid run summarizer -input "Go is a statically typed, compiled language..."
+
+# Override the model at runtime without editing the config
+$ ANTHROPIC_MODEL=claude-haiku-4-5-20251001 gogrid run researcher -input "What is a goroutine?"`}
+            />
+          </ExampleSection>
+
+          {/* CLI Trace & Cost Inspection */}
+          <ExampleSection
+            id="cli-trace-cost"
+            title="CLI Trace & Cost Inspection"
+            desc="After running agents, inspect what happened under the hood. View execution span trees to understand timing, and cost breakdowns to track spend per model."
+          >
+            <CodeBlock
+              filename="terminal"
+              code={`# List recent runs
+$ gogrid trace
+Recent runs:
+  019479a3c4e80001  researcher     claude-sonnet-4-5-20250929  4.2s
+  019479a1b2c70002  code-reviewer  gpt-4o-mini                1.1s
+  019479a0a1b60003  summarizer     gpt-4o-mini                0.8s
+
+# View the span tree for a specific run
+$ gogrid trace 019479a3c4e80001
+Run: 019479a3c4e80001
+Agent: researcher | Model: claude-sonnet-4-5-20250929 | Duration: 4.2s
+
+agent.run (4.2s)
+├── memory.load (1ms)
+├── llm.complete (2.1s) [prompt: 150, completion: 89]
+├── llm.complete (1.8s) [prompt: 280, completion: 145]
+└── memory.save (2ms)
+
+# Export spans as JSON for scripts or other tools
+$ gogrid trace 019479a3c4e80001 -json | jq '.[].name'
+"agent.run"
+"memory.load"
+"llm.complete"
+"llm.complete"
+"memory.save"`}
+            />
+            <CodeBlock
+              filename="terminal"
+              code={`# View cost overview of all runs
+$ gogrid cost
+RUN ID              AGENT           MODEL                         COST
+019479a3c4e80001    researcher      claude-sonnet-4-5-20250929    $0.003280
+019479a1b2c70002    code-reviewer   gpt-4o-mini                   $0.000150
+019479a0a1b60003    summarizer      gpt-4o-mini                   $0.000090
+
+# Detailed cost breakdown for a specific run
+$ gogrid cost 019479a3c4e80001
+Run: 019479a3c4e80001
+
+MODEL                         CALLS  PROMPT  COMPLETION  COST
+claude-sonnet-4-5-20250929    2      430     234         $0.003280
+────────────────────────────────────────────────────────────────
+TOTAL                         2      430     234         $0.003280
+
+# Export costs as JSON
+$ gogrid cost -json | jq '.[] | {agent, cost}'
+
+# Inspect raw run records directly
+$ cat .gogrid/runs/019479a3c4e80001.json | jq '{agent, model, turns, cost}'
+{
+  "agent": "researcher",
+  "model": "claude-sonnet-4-5-20250929",
+  "turns": 2,
+  "cost": 0.00328
+}`}
+            />
+          </ExampleSection>
+
+          {/* Project Scaffolding */}
+          <ExampleSection
+            id="cli-scaffold"
+            title="Project Scaffolding"
+            desc="Use gogrid init to scaffold a complete project from a template. Each template generates a working project with gogrid.yaml, main.go, Makefile, and README — ready to run."
+          >
+            <CodeBlock
+              filename="terminal"
+              code={`# Scaffold a single-agent project
+$ gogrid init --template single my-agent
+Created GoGrid project in my-agent/
+  gogrid.yaml   Agent configuration
+  main.go       Programmatic entry point
+  Makefile      Build targets
+  README.md     Setup instructions
+
+$ cd my-agent && cat gogrid.yaml`}
+            />
+            <CodeBlock
+              filename="my-agent/gogrid.yaml (generated)"
+              code={`version: "1"
+
+agents:
+  assistant:
+    model: gpt-4o-mini
+    provider: openai
+    instructions: |
+      You are a helpful assistant for the my-agent project.
+      Provide clear, concise, and accurate responses.
+    config:
+      max_turns: 10
+      max_tokens: 4096
+      timeout: 60s`}
+            />
+            <CodeBlock
+              filename="terminal"
+              code={`# Scaffold a team project
+$ gogrid init --template team my-research-team
+$ cat my-research-team/gogrid.yaml`}
+            />
+            <CodeBlock
+              filename="my-research-team/gogrid.yaml (generated)"
+              code={`version: "1"
+
+agents:
+  researcher:
+    model: gpt-4o
+    provider: openai
+    instructions: |
+      You are a research specialist. Investigate the given topic
+      thoroughly and provide detailed findings with evidence.
+    config:
+      max_turns: 10
+      max_tokens: 4096
+      timeout: 2m
+      cost_budget: 1.00
+
+  reviewer:
+    model: gpt-4o
+    provider: openai
+    instructions: |
+      You are a critical reviewer. Evaluate the research for accuracy,
+      completeness, and potential biases. Suggest improvements.
+    config:
+      max_turns: 5
+      max_tokens: 2048
+      timeout: 60s
+      cost_budget: 0.50`}
+            />
+            <CodeBlock
+              filename="terminal"
+              code={`# Scaffold a pipeline project
+$ gogrid init --template pipeline my-content-pipeline
+
+# Set up and run any scaffolded project
+$ cd my-content-pipeline
+$ go mod init github.com/example/my-content-pipeline
+$ go mod tidy
+$ export OPENAI_API_KEY=sk-proj-...
+$ gogrid list
+$ gogrid run drafter -input "Write about AI agents in production"`}
             />
           </ExampleSection>
 

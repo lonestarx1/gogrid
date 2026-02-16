@@ -6,6 +6,10 @@ import CodeBlock from "@/components/CodeBlock";
 
 const sections = [
   { id: "getting-started", label: "Getting Started" },
+  { id: "cli", label: "CLI" },
+  { id: "cli-config", label: "Configuration (YAML)" },
+  { id: "cli-commands", label: "CLI Commands" },
+  { id: "cli-run-records", label: "Run Records" },
   { id: "core-types", label: "Core Types" },
   { id: "single-agent", label: "Single Agent" },
   { id: "providers", label: "LLM Providers" },
@@ -148,10 +152,436 @@ export default function DocsPage() {
 │       ├── graph/      # Graph orchestrator
 │       └── dynamic/    # Dynamic orchestration runtime
 ├── internal/
-│   └── id/             # ID generation
+│   ├── id/             # ID generation
+│   ├── config/         # YAML configuration loading
+│   ├── runrecord/      # Run record persistence
+│   └── cli/            # CLI implementation
+│       └── templates/  # Project scaffolding templates
 └── cmd/
     └── gogrid/         # CLI entry point`}
                 filename="project layout"
+              />
+            </Section>
+
+            {/* CLI */}
+            <Section id="cli" title="CLI">
+              <P>
+                The <Code>gogrid</Code> CLI is the primary interface for working with GoGrid
+                projects. Define agents declaratively in <Code>gogrid.yaml</Code>, run them
+                from the command line, and inspect execution traces and costs — all without
+                writing Go code.
+              </P>
+              <H3>Installation</H3>
+              <P>
+                Build the CLI from source. The binary is written to <Code>bin/gogrid</Code>.
+              </P>
+              <CodeBlock
+                code={`git clone https://github.com/lonestarx1/gogrid.git
+cd gogrid
+make build
+
+# Verify the installation
+bin/gogrid version
+# gogrid dev (darwin/arm64, go1.25.4)
+
+# Optional: embed a version string
+make build VERSION=1.0.0`}
+                filename="terminal"
+              />
+              <H3>Quick Start</H3>
+              <P>
+                Scaffold a project, set an API key, and run your first agent in under a minute.
+              </P>
+              <CodeBlock
+                code={`# Scaffold a new project
+gogrid init --template single my-agent
+cd my-agent
+
+# Set up the project
+go mod init github.com/example/my-agent
+go mod tidy
+export OPENAI_API_KEY=sk-proj-...
+
+# Run your agent
+gogrid run assistant -input "Explain Go's concurrency model"`}
+                filename="terminal"
+              />
+              <H3>Project Templates</H3>
+              <P>
+                Three templates are available for <Code>gogrid init</Code>, each generating
+                a working project with <Code>gogrid.yaml</Code>, <Code>main.go</Code>,
+                <Code>Makefile</Code>, and <Code>README.md</Code>.
+              </P>
+              <div className="space-y-4 mb-6">
+                <Card title="single" desc="A single agent with instructions and configuration. The simplest starting point for any GoGrid project." />
+                <Card title="team" desc="Two agents (researcher + reviewer) collaborating via shared memory and consensus. Demonstrates multi-agent coordination." />
+                <Card title="pipeline" desc="Two sequential stages (drafter + editor) with state transfer between stages. Demonstrates linear workflows." />
+              </div>
+              <CodeBlock
+                code={`# Scaffold each template type
+gogrid init --template single my-agent
+gogrid init --template team my-research-team
+gogrid init --template pipeline my-content-pipeline
+
+# Use a custom name
+gogrid init --template team --name research-bot ./research`}
+                filename="terminal"
+              />
+            </Section>
+
+            {/* CLI Configuration */}
+            <Section id="cli-config" title="Configuration (YAML)">
+              <P>
+                GoGrid projects are configured via a <Code>gogrid.yaml</Code> file in the
+                project root. Each agent is defined with a model, provider, system prompt,
+                and execution parameters.
+              </P>
+              <H3>Schema</H3>
+              <CodeBlock
+                code={`version: "1"                    # Required. Config schema version.
+
+agents:
+  <agent-name>:                 # Unique agent identifier.
+    model: <string>             # Required. LLM model ID.
+    provider: <string>          # Required. One of: openai, anthropic, gemini.
+    instructions: <string>      # System prompt for the agent.
+    config:
+      max_turns: <int>          # Max LLM round-trips. 0 = unlimited.
+      max_tokens: <int>         # Max response tokens per turn.
+      temperature: <float>      # LLM randomness (0.0-1.0). Omit for default.
+      timeout: <duration>       # Wall-clock limit (e.g. "30s", "5m", "1h").
+      cost_budget: <float>      # Max cost in USD for a single run.`}
+                filename="gogrid.yaml schema"
+              />
+              <H3>Full Example</H3>
+              <CodeBlock
+                code={`version: "1"
+
+agents:
+  researcher:
+    model: claude-sonnet-4-5-20250929
+    provider: anthropic
+    instructions: |
+      You are a technical researcher. When given a topic:
+      1. Explain the core concepts clearly
+      2. Provide concrete examples
+      3. Discuss trade-offs and alternatives
+      4. Mention common pitfalls
+    config:
+      max_turns: 10
+      max_tokens: 4096
+      temperature: 0.7
+      timeout: 2m
+      cost_budget: 0.50
+
+  code-reviewer:
+    model: gpt-4o-mini
+    provider: openai
+    instructions: |
+      You are a senior Go code reviewer. Check for correctness,
+      error handling, naming, and Go idioms.
+    config:
+      max_turns: 5
+      max_tokens: 2048
+      timeout: 60s
+      cost_budget: 0.10
+
+  summarizer:
+    model: gpt-4o-mini
+    provider: openai
+    instructions: |
+      Condense the input into 3-5 bullet points. Under 200 words.
+    config:
+      max_turns: 3
+      max_tokens: 1024
+      timeout: 30s
+      cost_budget: 0.05`}
+                filename="gogrid.yaml"
+              />
+              <H3>Environment Variable Substitution</H3>
+              <P>
+                Config values support <Code>{"\u0024{VAR}"}</Code> and <Code>{"\u0024{VAR:-default}"}</Code> syntax.
+                This is processed before YAML parsing, so you can override any value per
+                environment without editing the config file.
+              </P>
+              <CodeBlock
+                code={`version: "1"
+
+agents:
+  assistant:
+    model: \${MODEL:-gpt-4o-mini}
+    provider: \${PROVIDER:-openai}
+    instructions: \${AGENT_INSTRUCTIONS:-You are a helpful assistant.}
+    config:
+      max_turns: 10
+      timeout: \${TIMEOUT:-60s}`}
+                filename="gogrid.yaml with env vars"
+              />
+              <CodeBlock
+                code={`# Override model and provider at runtime
+MODEL=claude-sonnet-4-5-20250929 PROVIDER=anthropic gogrid run assistant -input "Hello"
+
+# Use a different model for cost savings
+MODEL=gpt-4o-mini gogrid run assistant -input "Quick question"`}
+                filename="terminal"
+              />
+              <H3>Environment Variables</H3>
+              <P>
+                API keys are resolved from environment variables — never stored in config files.
+              </P>
+              <div className="space-y-4 mb-6">
+                <Card title="OPENAI_API_KEY" desc="API key for OpenAI models (gpt-4o, gpt-4o-mini, gpt-4.1, o3, etc.)" />
+                <Card title="ANTHROPIC_API_KEY" desc="API key for Anthropic models (claude-sonnet-4-5, claude-opus-4-6, etc.)" />
+                <Card title="GEMINI_API_KEY" desc="API key for Google Gemini models (gemini-2.5-pro, gemini-2.5-flash, etc.)" />
+              </div>
+              <H3>Validation</H3>
+              <P>
+                The config is validated on load. The CLI will report clear errors for
+                missing fields, invalid providers, or malformed YAML.
+              </P>
+              <ol className="list-decimal list-inside space-y-2 text-text-muted mb-6">
+                <li><Code>version</Code> must be <Code>&quot;1&quot;</Code></li>
+                <li>At least one agent must be defined</li>
+                <li>Each agent must have <Code>model</Code> and <Code>provider</Code></li>
+                <li><Code>provider</Code> must be one of: <Code>openai</Code>, <Code>anthropic</Code>, <Code>gemini</Code></li>
+              </ol>
+            </Section>
+
+            {/* CLI Commands */}
+            <Section id="cli-commands" title="CLI Commands">
+              <H3>gogrid init</H3>
+              <P>
+                Scaffold a new GoGrid project from a template. Creates a directory with
+                <Code>gogrid.yaml</Code>, <Code>main.go</Code>, <Code>Makefile</Code>, and <Code>README.md</Code>.
+              </P>
+              <CodeBlock
+                code={`gogrid init [flags] [directory]
+
+Flags:
+  -template string   Project template: single, team, pipeline (default "single")
+  -name string       Project name (defaults to directory name)`}
+                filename="gogrid init"
+              />
+              <CodeBlock
+                code={`# Scaffold a single-agent project
+$ gogrid init --template single my-agent
+
+Created GoGrid project in my-agent/
+  gogrid.yaml   Agent configuration
+  main.go       Programmatic entry point
+  Makefile      Build targets
+  README.md     Setup instructions
+
+Next steps:
+  cd my-agent
+  go mod init github.com/example/my-agent
+  go mod tidy
+  export OPENAI_API_KEY=sk-...
+  gogrid run assistant -input "Hello!"`}
+                filename="terminal"
+              />
+
+              <H3>gogrid list</H3>
+              <P>
+                List all agents defined in the project&apos;s <Code>gogrid.yaml</Code>.
+              </P>
+              <CodeBlock
+                code={`$ gogrid list
+NAME             PROVIDER    MODEL
+code-reviewer    openai      gpt-4o-mini
+researcher       anthropic   claude-sonnet-4-5-20250929
+summarizer       openai      gpt-4o-mini`}
+                filename="terminal"
+              />
+
+              <H3>gogrid run</H3>
+              <P>
+                Execute a named agent with the given input. The agent&apos;s response is printed
+                to stdout. A run record is saved for later inspection with <Code>gogrid trace</Code> and <Code>gogrid cost</Code>.
+              </P>
+              <CodeBlock
+                code={`gogrid run <agent-name> [flags]
+
+Flags:
+  -config string    Path to config file (default "gogrid.yaml")
+  -input string     Input text to send to the agent (required)
+  -timeout string   Override the agent's timeout (e.g. "30s", "5m")`}
+                filename="gogrid run"
+              />
+              <CodeBlock
+                code={`# Run an agent
+$ gogrid run researcher -input "Explain Go's context package"
+Go's context package provides a way to carry deadlines, cancellation signals,
+and request-scoped values across API boundaries...
+
+# The run ID is printed to stderr for later inspection
+Run ID: 019479a3c4e80001
+
+# Override timeout
+$ gogrid run summarizer -input "Summarize this paper..." -timeout 2m`}
+                filename="terminal"
+              />
+              <P>
+                What happens during a run:
+              </P>
+              <ol className="list-decimal list-inside space-y-2 text-text-muted mb-6">
+                <li>Loads and validates <Code>gogrid.yaml</Code></li>
+                <li>Looks up the agent by name</li>
+                <li>Resolves the LLM provider using environment variables</li>
+                <li>Creates the agent with configured model, instructions, and parameters</li>
+                <li>Calls <Code>agent.Run()</Code> with an in-memory tracer</li>
+                <li>Prints the response to stdout</li>
+                <li>Saves the run record to <Code>.gogrid/runs/</Code></li>
+              </ol>
+
+              <H3>gogrid trace</H3>
+              <P>
+                Inspect execution traces. With no arguments, lists recent runs. With a run ID,
+                renders the span tree showing the full execution flow.
+              </P>
+              <CodeBlock
+                code={`# List recent runs
+$ gogrid trace
+Recent runs:
+  019479a3c4e80001  researcher     claude-sonnet-4-5-20250929  4.2s
+  019479a1b2c70002  code-reviewer  gpt-4o-mini                1.1s
+  019479a0a1b60003  summarizer     gpt-4o-mini                0.8s
+
+# View span tree for a specific run
+$ gogrid trace 019479a3c4e80001
+Run: 019479a3c4e80001
+Agent: researcher | Model: claude-sonnet-4-5-20250929 | Duration: 4.2s
+
+agent.run (4.2s)
+├── memory.load (1ms)
+├── llm.complete (2.1s) [prompt: 150, completion: 89]
+├── llm.complete (1.8s) [prompt: 280, completion: 145]
+└── memory.save (2ms)
+
+# Export as JSON for programmatic use
+$ gogrid trace 019479a3c4e80001 -json | jq '.[].name'`}
+                filename="terminal"
+              />
+
+              <H3>gogrid cost</H3>
+              <P>
+                View cost breakdown for agent runs. With no arguments, lists all runs with
+                their total cost. With a run ID, shows a per-model cost breakdown.
+              </P>
+              <CodeBlock
+                code={`# List all runs with costs
+$ gogrid cost
+RUN ID              AGENT           MODEL                         COST
+019479a3c4e80001    researcher      claude-sonnet-4-5-20250929    $0.003280
+019479a1b2c70002    code-reviewer   gpt-4o-mini                   $0.000150
+019479a0a1b60003    summarizer      gpt-4o-mini                   $0.000090
+
+# Detailed cost breakdown for a specific run
+$ gogrid cost 019479a3c4e80001
+Run: 019479a3c4e80001
+
+MODEL                         CALLS  PROMPT  COMPLETION  COST
+claude-sonnet-4-5-20250929    2      430     234         $0.003280
+────────────────────────────────────────────────────────────────
+TOTAL                         2      430     234         $0.003280
+
+# Export as JSON
+$ gogrid cost -json`}
+                filename="terminal"
+              />
+
+              <H3>gogrid version</H3>
+              <CodeBlock
+                code={`$ gogrid version
+gogrid 1.0.0 (darwin/arm64, go1.25.4)`}
+                filename="terminal"
+              />
+
+              <H3>Supported Models</H3>
+              <P>
+                GoGrid includes built-in pricing for cost tracking. Any model string is
+                accepted — these have pre-configured pricing:
+              </P>
+              <div className="space-y-4 mb-6">
+                <Card title="OpenAI" desc="gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, o3, o4-mini" />
+                <Card title="Anthropic" desc="claude-opus-4-6, claude-opus-4-5, claude-sonnet-4-5, claude-sonnet-4-0, claude-haiku-4-5" />
+                <Card title="Google Gemini" desc="gemini-3-pro, gemini-3-flash, gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash" />
+              </div>
+              <P>
+                Models not in this list work fine — cost tracking will report $0.00 until
+                custom pricing is configured via the Go API.
+              </P>
+            </Section>
+
+            {/* Run Records */}
+            <Section id="cli-run-records" title="Run Records">
+              <P>
+                Every <Code>gogrid run</Code> invocation saves a JSON record to
+                <Code>.gogrid/runs/&lt;run-id&gt;.json</Code>. Run IDs are time-sortable, so
+                newer runs always sort after older ones.
+              </P>
+              <H3>Record Fields</H3>
+              <div className="space-y-4 mb-6">
+                <Card title="run_id" desc="Unique, time-sortable identifier for the run." />
+                <Card title="agent / model / provider" desc="Which agent ran, which model and provider were used." />
+                <Card title="input / output" desc="The user's input and the agent's final response." />
+                <Card title="turns / usage" desc="Number of LLM round-trips and token counts (prompt, completion, total)." />
+                <Card title="cost" desc="Estimated cost in USD based on built-in model pricing." />
+                <Card title="spans" desc="Execution trace spans — LLM calls, tool executions, memory operations." />
+                <Card title="duration / error" desc="Wall-clock duration and error message if the run failed." />
+              </div>
+              <H3>Inspecting Run Records</H3>
+              <P>
+                Run records are plain JSON files. You can inspect them directly, back them up,
+                or pipe them to other tools.
+              </P>
+              <CodeBlock
+                code={`# List run records
+ls .gogrid/runs/
+
+# View a raw record
+cat .gogrid/runs/019479a3c4e80001.json | jq .
+
+# Extract agent names and costs from all runs
+for f in .gogrid/runs/*.json; do
+  echo "$(jq -r '.agent' $f): $(jq -r '.cost' $f)"
+done
+
+# Total cost across all runs
+ls .gogrid/runs/*.json | xargs -I{} jq '.cost' {} | paste -sd+ | bc`}
+                filename="terminal"
+              />
+              <P>
+                Add <Code>.gogrid/</Code> to your <Code>.gitignore</Code> — run records are
+                local development artifacts.
+              </P>
+              <H3>Typical Workflow</H3>
+              <CodeBlock
+                code={`# 1. Scaffold a project
+gogrid init --template single my-project
+cd my-project
+
+# 2. Set up Go module and dependencies
+go mod init github.com/example/my-project
+go mod tidy
+
+# 3. Set your API key
+export OPENAI_API_KEY=sk-proj-...
+
+# 4. List agents
+gogrid list
+
+# 5. Run an agent
+gogrid run assistant -input "Explain the CAP theorem"
+
+# 6. Inspect the trace
+gogrid trace          # list recent runs, copy a run ID
+gogrid trace <run-id> # view execution span tree
+
+# 7. Check costs
+gogrid cost <run-id>  # detailed breakdown
+gogrid cost           # summary of all runs`}
+                filename="terminal"
               />
             </Section>
 
