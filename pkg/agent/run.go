@@ -10,6 +10,7 @@ import (
 	"github.com/lonestarx1/gogrid/internal/id"
 	"github.com/lonestarx1/gogrid/pkg/cost"
 	"github.com/lonestarx1/gogrid/pkg/llm"
+	"github.com/lonestarx1/gogrid/pkg/memory"
 	"github.com/lonestarx1/gogrid/pkg/tool"
 )
 
@@ -53,11 +54,17 @@ func (a *Agent) Run(ctx context.Context, input string) (*Result, error) {
 
 	// Load conversation history from memory.
 	if a.memory != nil {
+		_, memLoadSpan := a.tracer.StartSpan(ctx, "memory.load")
+		memLoadSpan.SetAttribute("memory.key", a.name)
 		history, err := a.memory.Load(ctx, a.name)
 		if err != nil {
+			memLoadSpan.SetError(err)
+			a.tracer.EndSpan(memLoadSpan)
 			runSpan.SetError(err)
 			return nil, fmt.Errorf("agent: load memory: %w", err)
 		}
+		memLoadSpan.SetAttribute("memory.entries", strconv.Itoa(len(history)))
+		a.tracer.EndSpan(memLoadSpan)
 		messages = append(messages, history...)
 	}
 
@@ -175,10 +182,24 @@ func (a *Agent) Run(ctx context.Context, input string) (*Result, error) {
 	}
 
 	// Save to memory.
+	var memStats *memory.Stats
 	if a.memory != nil {
+		_, memSaveSpan := a.tracer.StartSpan(ctx, "memory.save")
+		memSaveSpan.SetAttribute("memory.key", a.name)
+		memSaveSpan.SetAttribute("memory.entries", strconv.Itoa(len(messages)))
 		if err := a.memory.Save(ctx, a.name, messages); err != nil {
+			memSaveSpan.SetError(err)
+			a.tracer.EndSpan(memSaveSpan)
 			runSpan.SetError(err)
 			return nil, fmt.Errorf("agent: save memory: %w", err)
+		}
+		a.tracer.EndSpan(memSaveSpan)
+
+		// Collect stats if supported.
+		if sm, ok := a.memory.(memory.StatsMemory); ok {
+			if s, err := sm.Stats(ctx); err == nil {
+				memStats = s
+			}
 		}
 	}
 
@@ -186,12 +207,13 @@ func (a *Agent) Run(ctx context.Context, input string) (*Result, error) {
 	runSpan.SetAttribute("agent.cost_usd", fmt.Sprintf("%.6f", totalCost))
 
 	return &Result{
-		RunID:   runID,
-		Message: finalMessage,
-		History: messages,
-		Usage:   tracker.TotalUsage(),
-		Cost:    totalCost,
-		Turns:   turns,
+		RunID:       runID,
+		Message:     finalMessage,
+		History:     messages,
+		Usage:       tracker.TotalUsage(),
+		Cost:        totalCost,
+		Turns:       turns,
+		MemoryStats: memStats,
 	}, nil
 }
 

@@ -53,6 +53,9 @@ type Result struct {
 	Cost float64
 	// Turns is the number of LLM round-trips that occurred.
 	Turns int
+	// MemoryStats contains aggregate statistics about the agent's memory,
+	// populated when the memory implements memory.StatsMemory. Nil otherwise.
+	MemoryStats *memory.Stats
 }
 
 // Option is a functional option for configuring an Agent.
