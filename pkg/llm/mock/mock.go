@@ -1,6 +1,3 @@
-// Package mock provides a configurable mock LLM provider for testing
-// GoGrid agents, teams, pipelines, and graphs. It supports sequential
-// responses, error injection, latency simulation, and call recording.
 package mock
 
 import (

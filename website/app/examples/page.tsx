@@ -74,6 +74,16 @@ const examples = [
     title: "Project Scaffolding",
     desc: "Scaffold a complete GoGrid project from a template in one command.",
   },
+  {
+    id: "eval-suite",
+    title: "Evaluation Suite",
+    desc: "Score agent outputs with composable evaluators — exact match, cost budgets, and custom checks.",
+  },
+  {
+    id: "mock-testing",
+    title: "Mock Provider Testing",
+    desc: "Test agents with sequential responses, error injection, and call recording.",
+  },
 ];
 
 export default function ExamplesPage() {
@@ -1302,6 +1312,123 @@ func main() {
 
     fmt.Printf("\\nMetrics available at http://localhost:9090/metrics\\n")
     fmt.Println(result.Message.Content)
+}`}
+            />
+          </ExampleSection>
+
+          <ExampleSection
+            id="eval-suite"
+            title="Evaluation Suite"
+            desc="Score agent outputs with composable evaluators — exact match, cost budgets, and custom checks."
+          >
+            <CodeBlock
+              code={`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/eval"
+    "github.com/lonestarx1/gogrid/pkg/llm"
+    "github.com/lonestarx1/gogrid/pkg/llm/mock"
+)
+
+func main() {
+    provider := mock.New(mock.WithFallback(&llm.Response{
+        Message: llm.NewAssistantMessage("Go is a statically typed, compiled language designed for simplicity."),
+        Usage:   llm.Usage{PromptTokens: 15, CompletionTokens: 14, TotalTokens: 29},
+        Model:   "mock",
+    }))
+
+    a := agent.New("eval-agent",
+        agent.WithProvider(provider),
+        agent.WithModel("mock"),
+    )
+
+    result, err := a.Run(context.Background(), "Describe Go in one sentence.")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Compose evaluators into a suite.
+    suite := eval.NewSuite(
+        eval.NewContains("Go", "compiled", "simplicity"),
+        eval.NewCostWithin(0.01),
+        eval.NewFunc("min_length", func(_ context.Context, r *agent.Result) (eval.Score, error) {
+            if len(r.Message.Content) >= 20 {
+                return eval.Score{Pass: true, Value: 1.0, Reason: "sufficient length"}, nil
+            }
+            return eval.Score{Pass: false, Value: 0.0, Reason: "too short"}, nil
+        }),
+    )
+
+    sr, _ := suite.Run(context.Background(), result)
+    fmt.Printf("Suite passed: %v\\n", sr.Pass)
+    for name, score := range sr.Scores {
+        fmt.Printf("  %s: pass=%v value=%.2f reason=%s\\n",
+            name, score.Pass, score.Value, score.Reason)
+    }
+}`}
+            />
+          </ExampleSection>
+
+          <ExampleSection
+            id="mock-testing"
+            title="Mock Provider Testing"
+            desc="Test agents with sequential responses, error injection, and call recording — no API keys needed."
+          >
+            <CodeBlock
+              code={`package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "log"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/llm"
+    "github.com/lonestarx1/gogrid/pkg/llm/mock"
+)
+
+func main() {
+    // Queue a tool call response followed by a final answer.
+    toolCallResp := &llm.Response{
+        Message: llm.Message{
+            Role: llm.RoleAssistant,
+            ToolCalls: []llm.ToolCall{
+                {ID: "tc-1", Function: "search", Arguments: json.RawMessage(\`{"q":"Go"}\`)},
+            },
+        },
+        Usage: llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
+        Model: "mock",
+    }
+    finalResp := &llm.Response{
+        Message: llm.NewAssistantMessage("Go was created at Google in 2007."),
+        Usage:   llm.Usage{PromptTokens: 20, CompletionTokens: 10, TotalTokens: 30},
+        Model:   "mock",
+    }
+
+    provider := mock.New(
+        mock.WithResponses(toolCallResp, finalResp),
+        mock.WithFallback(finalResp),
+    )
+
+    a := agent.New("test-agent",
+        agent.WithProvider(provider),
+        agent.WithModel("mock"),
+    )
+
+    result, err := a.Run(context.Background(), "When was Go created?")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Response: %s\\n", result.Message.Content)
+    fmt.Printf("Calls: %d\\n", provider.Calls())
+    fmt.Printf("History: %d params recorded\\n", len(provider.History()))
 }`}
             />
           </ExampleSection>

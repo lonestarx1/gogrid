@@ -167,7 +167,7 @@ For full CLI documentation, see [docs/cli.md](docs/cli.md).
 - **Built-in observability** — Structured tracing with OTLP export (Jaeger, Tempo, Zipkin), structured JSON logging with trace correlation, and Prometheus-compatible metrics — all using the Go standard library
 - **Cost governance** — Budget alerts, per-entity cost allocation, aggregate reporting, and built-in pricing for popular models. Every LLM call is metered and budgetable.
 - **Shared memory** — Optimized, monitorable shared memory pool for multi-agent architectures
-- **Evaluation framework** — Built-in metrics for agent performance and scalability
+- **Evaluation framework** — Composable evaluators (exact match, cost budgets, tool usage, LLM-as-judge) with suites for scoring agent outputs. Performance benchmarks for all patterns.
 - **Security integration** — Secure-by-default design with Tenio.ai integration
 - **Backward compatibility** — Gradual, backward-compatible updates. Your GoGrid agents won't break on upgrade.
 
@@ -177,13 +177,28 @@ For full CLI documentation, see [docs/cli.md](docs/cli.md).
 
 ## Documentation
 
+- [Getting Started](docs/getting-started.md) — Install, first agent, first CLI project
+- [Patterns Guide](docs/patterns.md) — When to use each orchestration pattern
+- [Testing Guide](docs/testing.md) — Mock provider, evaluation framework, benchmarks
+- [Observability Guide](docs/observability.md) — Tracing, logging, metrics, cost governance
 - [CLI Reference](docs/cli.md) — Full CLI command reference, config format, and environment setup
 - [Manifesto](docs/manifesto.md) — Why GoGrid exists and what we believe
+- [Architecture Decisions](docs/adr/README.md) — ADRs for key design choices
 
 ## Examples
 
-- [`examples/single-agent/`](examples/single-agent/) — Programmatic single agent with tool use (Go API)
-- [`examples/cli-quickstart/`](examples/cli-quickstart/) — Multi-agent project using the CLI with `gogrid.yaml`
+All examples use the mock provider and run without API keys (`go run ./examples/<name>/`).
+
+- [`examples/single-agent/`](examples/single-agent/) — Single agent with tool use (Go API)
+- [`examples/cli-quickstart/`](examples/cli-quickstart/) — Multi-agent project using the CLI
+- [`examples/multi-provider/`](examples/multi-provider/) — Same agent, different providers
+- [`examples/memory-file/`](examples/memory-file/) — File-backed memory with search and pruning
+- [`examples/eval/`](examples/eval/) — Evaluation suite with composable evaluators
+- [`examples/team-debate/`](examples/team-debate/) — Multi-agent team with consensus and coordinator
+- [`examples/pipeline-research/`](examples/pipeline-research/) — Three-stage pipeline with state transfer
+- [`examples/graph-review/`](examples/graph-review/) — Graph with conditional edges and review loop
+- [`examples/dynamic-spawn/`](examples/dynamic-spawn/) — Dynamic orchestration with resource governance
+- [`examples/observability/`](examples/observability/) — Full observability stack (tracing, logging, metrics, cost)
 
 ## License
 
