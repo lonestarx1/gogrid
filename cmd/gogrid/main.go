@@ -1,3 +1,4 @@
+// GoGrid (G2) CLI entry point.
 package main
 
 import "fmt"
