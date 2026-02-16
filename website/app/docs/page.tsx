@@ -22,6 +22,9 @@ const sections = [
   { id: "pipeline", label: "Pipeline" },
   { id: "pipeline-stages", label: "Pipeline Stages" },
   { id: "pipeline-retry", label: "Retry & Error Handling" },
+  { id: "graph", label: "Graph" },
+  { id: "graph-builder", label: "Graph Builder" },
+  { id: "graph-advanced", label: "Loops & Conditions" },
   { id: "tracing", label: "Tracing" },
   { id: "cost-tracking", label: "Cost Tracking" },
 ];
@@ -901,6 +904,149 @@ pipeline.Stage{
               </P>
             </Section>
 
+            {/* Graph */}
+            <Section id="graph" title="Graph">
+              <P>
+                The Graph pattern extends pipelines with conditional branches, parallel
+                execution (fan-out/fan-in), and loops. Nodes wrap agents and edges connect
+                them with optional condition functions.
+              </P>
+              <CodeBlock
+                code={`import "github.com/lonestarx1/gogrid/pkg/orchestrator/graph"
+
+g, err := graph.NewBuilder("review-pipeline").
+    AddNode("draft", draftAgent).
+    AddNode("review", reviewAgent).
+    AddNode("publish", publishAgent).
+    AddEdge("draft", "review").
+    AddEdge("review", "publish").
+    Options(
+        graph.WithConfig(graph.Config{
+            MaxIterations: 10,
+            Timeout:       5 * time.Minute,
+            CostBudget:    3.00,
+        }),
+        graph.WithTracer(tracer),
+    ).
+    Build()
+
+result, err := g.Run(ctx, "Write about AI agents")
+fmt.Println(result.Output)
+fmt.Printf("Nodes: %d, Cost: $%.4f\\n", len(result.NodeResults), result.TotalCost)`}
+                filename="graph"
+              />
+              <H3>Fan-Out / Fan-In</H3>
+              <P>
+                Independent branches run concurrently. When multiple edges point to the
+                same node, it waits for all incoming sources to complete before running.
+              </P>
+              <CodeBlock
+                code={`// Diamond pattern: a -> b, a -> c, b -> d, c -> d
+// b and c run in parallel; d waits for both before running
+g, _ := graph.NewBuilder("diamond").
+    AddNode("split", splitAgent).
+    AddNode("path-a", agentA).
+    AddNode("path-b", agentB).
+    AddNode("merge", mergeAgent).
+    AddEdge("split", "path-a").
+    AddEdge("split", "path-b").
+    AddEdge("path-a", "merge").
+    AddEdge("path-b", "merge").
+    Build()`}
+                filename="fan-out/fan-in"
+              />
+            </Section>
+
+            {/* Graph Builder */}
+            <Section id="graph-builder" title="Graph Builder">
+              <P>
+                The fluent builder API validates the graph at build time — duplicate nodes,
+                missing edge targets, and other structural errors are caught before execution.
+              </P>
+              <CodeBlock
+                code={`b := graph.NewBuilder("my-graph")
+
+// Add nodes (each wraps an agent)
+b.AddNode("research", researchAgent)
+b.AddNode("analyze", analyzeAgent)
+b.AddNode("report", reportAgent)
+
+// Add edges (optionally with conditions)
+b.AddEdge("research", "analyze")
+b.AddEdge("analyze", "report")
+
+// Apply options
+b.Options(graph.WithTracer(tracer))
+
+// Build validates and returns the graph
+g, err := b.Build()
+if err != nil {
+    log.Fatal(err) // e.g., "edge references unknown node"
+}`}
+                filename="builder"
+              />
+              <H3>DOT Export</H3>
+              <P>
+                Export the graph to Graphviz DOT format for visualization.
+              </P>
+              <CodeBlock
+                code={`dot := g.DOT()
+// Output:
+// digraph "my-graph" {
+//   rankdir=LR;
+//   node [shape=box, style=rounded];
+//   "research";
+//   "analyze";
+//   "report";
+//   "research" -> "analyze";
+//   "analyze" -> "report";
+// }`}
+                filename="DOT export"
+              />
+            </Section>
+
+            {/* Graph Advanced */}
+            <Section id="graph-advanced" title="Loops & Conditions">
+              <P>
+                Conditional edges use <Code>graph.When</Code> to control routing based on
+                a node&apos;s output. Backward edges create loops with a configurable
+                max iteration guard.
+              </P>
+              <CodeBlock
+                code={`g, _ := graph.NewBuilder("review-loop").
+    AddNode("draft", draftAgent).
+    AddNode("review", reviewAgent).
+    AddNode("revise", reviseAgent).
+    AddNode("publish", publishAgent).
+    AddEdge("draft", "review").
+    // Conditional: route based on review output
+    AddEdge("review", "revise", graph.When(func(out string) bool {
+        return strings.Contains(out, "needs revision")
+    })).
+    AddEdge("review", "publish", graph.When(func(out string) bool {
+        return strings.Contains(out, "approved")
+    })).
+    // Loop back: revise -> review
+    AddEdge("revise", "review").
+    Options(graph.WithConfig(graph.Config{
+        MaxIterations: 5, // prevent infinite loops
+    })).
+    Build()`}
+                filename="loops and conditions"
+              />
+              <H3>Edge Helpers</H3>
+              <CodeBlock
+                code={`// When wraps a simple output check
+graph.When(func(output string) bool {
+    return strings.Contains(output, "approved")
+})
+
+// Always is an unconditional edge (same as no condition)
+graph.Always()`}
+                filename="edge helpers"
+              />
+            </Section>
+
             {/* Tracing */}
             <Section id="tracing" title="Tracing">
               <P>
@@ -977,6 +1123,22 @@ for _, span := range tracer.Spans() {
 //   └─ pipeline.stage (summarize)
 //       └─ agent.run ...`}
                 filename="pipeline trace tree"
+              />
+              <H3>Graph Trace Spans</H3>
+              <CodeBlock
+                code={`// Trace tree for a graph run:
+// graph.run
+//   ├─ graph.node (draft, iteration=1)
+//   │   └─ agent.run ...
+//   ├─ graph.node (review, iteration=1)
+//   │   └─ agent.run ...
+//   ├─ graph.node (revise, iteration=1)
+//   │   └─ agent.run ...
+//   ├─ graph.node (review, iteration=2)
+//   │   └─ agent.run ...
+//   └─ graph.node (publish, iteration=1)
+//       └─ agent.run ...`}
+                filename="graph trace tree"
               />
             </Section>
 

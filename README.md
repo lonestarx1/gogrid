@@ -40,7 +40,7 @@ Multiple domain experts collaborating in real-time — like a meeting where part
 Sequential handoff between specialists. Each agent completes its work, yields its state to the next agent, and terminates cleanly. Supports stage-level retry policies, input transforms, output validation, and progress reporting. Clear ownership, predictable execution.
 
 ### Graph
-Like a pipeline, but with the ability to loop back (re-do, clarify) or branch into parallel paths that merge later. Best for workflows with a bounded number of agents where you want to visualize the data flow.
+Like a pipeline, but with conditional edges, parallel fan-out, fan-in merging, and loops. Agents execute concurrently in waves — when a node completes, its outgoing edges are evaluated and successor nodes fire when all dependencies are satisfied. Supports configurable iteration limits, cost budgets, timeouts, and exports to Graphviz DOT format for visualization.
 
 ### Dynamic Orchestration
 GoGrid's most powerful pattern. Agents can spawn child agents, child teams, child pipelines, or child graphs dynamically at runtime. Unlimited scaling with minimal assumptions about how a problem gets solved. For when the developer doesn't know — or shouldn't hardcode — the exact steps to a solution.
