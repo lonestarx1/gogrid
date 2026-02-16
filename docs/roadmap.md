@@ -385,9 +385,11 @@ These are the foundational types the entire framework builds on.
 
 ---
 
-## Phase 8: Security Integration
+## Phase 8: Security Integration *(deferred — waiting for Tenuo Go SDK)*
 
-**Goal:** Secure-by-default with Tenio.ai integration. Prompt injection protection, tool authorization, data exfiltration prevention.
+**Status:** Deferred. Tenuo.io currently only provides a Python SDK. Once the Tenuo Go SDK is available, GoGrid will integrate it directly rather than re-implementing the warrant model. This avoids duplication and ensures GoGrid stays in sync with the upstream Tenuo specification.
+
+**Goal:** Secure-by-default with Tenuo.io integration. Prompt injection protection, tool authorization, data exfiltration prevention.
 
 ### 8.1 — Tool Authorization
 
@@ -400,7 +402,7 @@ These are the foundational types the entire framework builds on.
 
 - Input sanitization hooks (pre-LLM-call)
 - Output validation hooks (post-LLM-call)
-- Tenio.ai integration for automated prompt injection detection
+- Tenuo.io integration for automated prompt injection detection
 - Configurable: strict mode (block suspicious), warn mode (log and continue)
 
 ### 8.3 — Data Exfiltration Prevention
@@ -412,7 +414,7 @@ These are the foundational types the entire framework builds on.
 ### 8.4 — Deliverables
 
 - [ ] Tool authorization with policy enforcement
-- [ ] Prompt injection detection (built-in heuristics + Tenio.ai)
+- [ ] Prompt injection detection (built-in heuristics + Tenuo.io)
 - [ ] Data exfiltration prevention
 - [ ] Security audit logging
 - [ ] Example: `examples/secure-agent/` — agent with full security policy

@@ -24,7 +24,7 @@ GoGrid is not a wrapper around LLM APIs. It is infrastructure for running agents
 - **Right-sized abstraction.** In the AI-assisted coding era, typing speed isn't the bottleneck — understanding and maintaining code is. GoGrid optimizes for clarity over cleverness, even if it means more lines of code.
 - **Production-first.** Monitoring, cost tracking, error recovery, graceful degradation, and security are built into GoGrid from day one, not bolted on later.
 - **Model-agnostic, vendor-agnostic.** Swap models with a config change. No subtle lock-in. Open source, forever.
-- **Secure by default.** Integrated security posture with [Tenio.ai](https://tenio.ai). Prompt injection protection, tool-use authorization, and data exfiltration prevention as first-class concerns.
+- **Secure by default.** Planned [Tenuo.io](https://tenuo.io) integration for prompt injection protection, tool-use authorization, and data exfiltration prevention. *(Coming when the Tenuo Go SDK is available.)*
 
 ## Architecture
 
@@ -168,7 +168,7 @@ For full CLI documentation, see [docs/cli.md](docs/cli.md).
 - **Cost governance** — Budget alerts, per-entity cost allocation, aggregate reporting, and built-in pricing for popular models. Every LLM call is metered and budgetable.
 - **Shared memory** — Optimized, monitorable shared memory pool for multi-agent architectures
 - **Evaluation framework** — Composable evaluators (exact match, cost budgets, tool usage, LLM-as-judge) with suites for scoring agent outputs. Performance benchmarks for all patterns.
-- **Security integration** — Secure-by-default design with Tenio.ai integration
+- **Security integration** *(planned)* — [Tenuo.io](https://tenuo.io) integration for prompt injection protection, tool authorization, and data exfiltration prevention. Waiting on the Tenuo Go SDK.
 - **Backward compatibility** — Gradual, backward-compatible updates. Your GoGrid agents won't break on upgrade.
 
 ## Project Status

@@ -13,7 +13,7 @@
 
 - **Clarity over cleverness.** Explicit, readable code. More lines of clear code is preferred over fewer lines of magic. Follow Go idioms and conventions.
 - **Production-first.** Every GoGrid feature must consider monitoring, error handling, cost management, security, and scalability from the start.
-- **Secure by default.** Never introduce code that is insecure by default. Security integration with Tenio.ai.
+- **Secure by default.** Never introduce code that is insecure by default. Security integration with Tenuo.io.
 - **No vendor lock-in.** Model-agnostic, provider-agnostic. Swapping LLM providers must be a configuration change.
 - **Backward compatibility.** API changes must be gradual and backward-compatible. Deprecate before removing.
 

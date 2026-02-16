@@ -34,7 +34,7 @@ GoGrid builds production essentials in from day one:
 - **Observability** is not an add-on. Every GoGrid agent invocation is traceable across the full execution path.
 - **Cost governance** is not optional. Every LLM API call is metered, budgeted, and reportable.
 - **Error handling** is not an exercise left to the reader. Timeouts, retries, idempotency, backoff, and cancellation are GoGrid primitives, not patterns you Google.
-- **Security** is not an afterthought. GoGrid integrates with [Tenio.ai](https://tenio.ai) for prompt injection protection, tool authorization, and data exfiltration prevention — secure by default, not secure by configuration.
+- **Security** is not an afterthought. GoGrid will integrate with [Tenuo.io](https://tenuo.io) for prompt injection protection, tool authorization, and data exfiltration prevention — secure by default, not secure by configuration. *(Integration pending the Tenuo Go SDK.)*
 
 ### 3. Memory Is a First-Class Citizen
 
