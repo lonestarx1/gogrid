@@ -11,7 +11,7 @@
 
 ### 0.1 — Go Module & Project Structure
 
-- `go mod init github.com/gogridai/gogrid`
+- `go mod init github.com/lonestarx1/gogrid`
 - Create directory skeleton:
   ```
   cmd/gogrid/          # CLI entry point (stub)
