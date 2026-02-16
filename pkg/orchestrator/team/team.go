@@ -58,14 +58,18 @@ type Result struct {
 // Team orchestrates multiple agents in a chat-room style discussion.
 // Agents run concurrently each round, communicate via a shared message bus,
 // and reach decisions through a pluggable consensus strategy.
+//
+// An optional coordinator agent can be set to synthesize a final decision
+// from the member responses instead of using string concatenation.
 type Team struct {
-	name     string
-	members  []Member
-	strategy Strategy
-	memory   *shared.Memory
-	bus      *Bus
-	tracer   trace.Tracer
-	config   Config
+	name        string
+	members     []Member
+	coordinator *agent.Agent
+	strategy    Strategy
+	memory      *shared.Memory
+	bus         *Bus
+	tracer      trace.Tracer
+	config      Config
 }
 
 // Option is a functional option for configuring a Team.
@@ -128,6 +132,16 @@ func WithConfig(c Config) Option {
 	}
 }
 
+// WithCoordinator sets a coordinator agent that synthesizes the final
+// team decision. After all rounds complete, the coordinator receives
+// every member's response and produces a single coherent answer.
+// Without a coordinator, member responses are concatenated.
+func WithCoordinator(a *agent.Agent) Option {
+	return func(t *Team) {
+		t.coordinator = a
+	}
+}
+
 // Name returns the team's name.
 func (t *Team) Name() string { return t.name }
 
@@ -166,6 +180,9 @@ func (t *Team) Run(ctx context.Context, input string) (*Result, error) {
 	runSpan.SetAttribute("team.run_id", runID)
 	runSpan.SetAttribute("team.members", strconv.Itoa(len(t.members)))
 	runSpan.SetAttribute("team.strategy", t.strategy.Name())
+	if t.coordinator != nil {
+		runSpan.SetAttribute("team.coordinator", t.coordinator.Name())
+	}
 	defer t.tracer.EndSpan(runSpan)
 
 	maxRounds := t.config.MaxRounds
@@ -291,6 +308,21 @@ func (t *Team) Run(ctx context.Context, input string) (*Result, error) {
 		decision = combineResponses(responses)
 	}
 
+	// Run coordinator to synthesize a final decision from member responses.
+	if t.coordinator != nil && len(agentResults) > 0 {
+		coordResult, coordErr := t.runCoordinator(ctx, input, agentResults)
+		if coordErr != nil {
+			runSpan.SetAttribute("team.coordinator.error", coordErr.Error())
+		} else {
+			decision = coordResult.Message.Content
+			agentResults[t.coordinator.Name()] = coordResult
+			totalCost += coordResult.Cost
+			totalUsage.PromptTokens += coordResult.Usage.PromptTokens
+			totalUsage.CompletionTokens += coordResult.Usage.CompletionTokens
+			totalUsage.TotalTokens += coordResult.Usage.TotalTokens
+		}
+	}
+
 	// Collect shared memory stats.
 	var memStats *memory.Stats
 	if s, err := t.memory.Stats(ctx); err == nil {
@@ -309,6 +341,61 @@ func (t *Team) Run(ctx context.Context, input string) (*Result, error) {
 		TotalUsage:  totalUsage,
 		MemoryStats: memStats,
 	}, nil
+}
+
+// runCoordinator runs the coordinator agent with a prompt that includes the
+// original input and all member responses, asking it to synthesize a decision.
+func (t *Team) runCoordinator(ctx context.Context, input string, results map[string]*agent.Result) (*agent.Result, error) {
+	_, coordSpan := t.tracer.StartSpan(ctx, "team.coordinator")
+	coordSpan.SetAttribute("team.coordinator.name", t.coordinator.Name())
+	defer t.tracer.EndSpan(coordSpan)
+
+	prompt := t.buildCoordinatorPrompt(input, results)
+
+	result, err := t.coordinator.Run(ctx, prompt)
+	if err != nil {
+		coordSpan.SetError(err)
+		return nil, fmt.Errorf("coordinator: %w", err)
+	}
+
+	// Publish to bus.
+	t.bus.Publish(Message{
+		From:    t.coordinator.Name(),
+		Topic:   "team.coordinator",
+		Content: result.Message.Content,
+	})
+
+	return result, nil
+}
+
+// buildCoordinatorPrompt builds the coordinator's input with the original
+// question and all member responses.
+func (t *Team) buildCoordinatorPrompt(original string, results map[string]*agent.Result) string {
+	var b strings.Builder
+	b.WriteString("You are the team coordinator. Review the following team discussion and synthesize a final decision.\n\n")
+	b.WriteString("## Original Task\n")
+	b.WriteString(original)
+	b.WriteString("\n\n## Team Member Responses\n\n")
+
+	for _, m := range t.members {
+		r, ok := results[m.Agent.Name()]
+		if !ok {
+			continue
+		}
+		b.WriteString("### ")
+		b.WriteString(m.Agent.Name())
+		if m.Role != "" {
+			b.WriteString(" (")
+			b.WriteString(m.Role)
+			b.WriteString(")")
+		}
+		b.WriteString("\n")
+		b.WriteString(r.Message.Content)
+		b.WriteString("\n\n")
+	}
+
+	b.WriteString("## Your Task\nSynthesize the above responses into a single, coherent final decision.")
+	return b.String()
 }
 
 // buildRoundInput formats the input for round 2+ with context from prior rounds.

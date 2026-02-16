@@ -30,6 +30,11 @@ const examples = [
     desc: "Agents debate a topic over multiple rounds, seeing each other's responses.",
   },
   {
+    id: "coordinated-team",
+    title: "Coordinated Team",
+    desc: "A leader agent synthesizes team responses into a final decision.",
+  },
+  {
     id: "pipeline-state",
     title: "Pipeline State Transfer",
     desc: "State ownership enforced across pipeline stages with audit trail.",
@@ -418,6 +423,92 @@ func main() {
     fmt.Println("\\n=== Final Decision ===")
     fmt.Println(result.Decision.Content)
     fmt.Printf("Rounds: %d | Cost: $%.4f\\n", result.Rounds, result.TotalCost)
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}`}
+            />
+          </ExampleSection>
+
+          {/* Coordinated Team */}
+          <ExampleSection
+            id="coordinated-team"
+            title="Coordinated Team"
+            desc="A coordinator agent listens to all team members and synthesizes a single, coherent decision — instead of concatenating responses."
+          >
+            <CodeBlock
+              filename="examples/coordinated-team/main.go"
+              code={`package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "github.com/lonestarx1/gogrid/pkg/agent"
+    "github.com/lonestarx1/gogrid/pkg/llm/openai"
+    "github.com/lonestarx1/gogrid/pkg/orchestrator/team"
+)
+
+func main() {
+    ctx := context.Background()
+    provider := openai.New(os.Getenv("OPENAI_API_KEY"))
+
+    // Domain experts
+    frontend := agent.New("frontend",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a frontend engineer. Evaluate proposals from a UI/UX perspective."),
+    )
+    backend := agent.New("backend",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a backend engineer. Evaluate proposals from an architecture perspective."),
+    )
+    security := agent.New("security",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are a security engineer. Evaluate proposals for security implications."),
+    )
+
+    // Team lead synthesizes all perspectives
+    lead := agent.New("tech-lead",
+        agent.WithProvider(provider),
+        agent.WithModel("gpt-4o"),
+        agent.WithInstructions("You are the tech lead. Synthesize all perspectives into a clear, actionable decision."),
+    )
+
+    t := team.New("design-review",
+        team.WithMembers(
+            team.Member{Agent: frontend, Role: "frontend"},
+            team.Member{Agent: backend, Role: "backend"},
+            team.Member{Agent: security, Role: "security"},
+        ),
+        team.WithCoordinator(lead),
+        team.WithStrategy(team.Unanimous{}),
+        team.WithConfig(team.Config{MaxRounds: 2}),
+    )
+
+    result, err := t.Run(ctx, "Should we add WebSocket support for real-time notifications?")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // The decision comes from the coordinator, not concatenated responses
+    fmt.Println("=== Tech Lead Decision ===")
+    fmt.Println(result.Decision.Content)
+
+    fmt.Printf("\\nRounds: %d | Cost: $%.4f\\n", result.Rounds, result.TotalCost)
+
+    // Individual perspectives are still available
+    for name, r := range result.Responses {
+        fmt.Printf("\\n--- %s ---\\n%s\\n", name, r.Message.Content[:min(len(r.Message.Content), 100)])
+    }
 }
 
 func min(a, b int) int {

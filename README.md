@@ -34,7 +34,7 @@ GoGrid supports five orchestration patterns, because different problems demand d
 A well-scoped agent with a small number of tools. The recommended starting point for any GoGrid project.
 
 ### Team (Chat Room)
-Multiple domain experts collaborating in real-time — like a meeting where participants work concurrently, debate, and reach consensus. Built on pub/sub messaging with shared memory.
+Multiple domain experts collaborating in real-time — like a meeting where participants work concurrently, debate, and reach consensus. Built on pub/sub messaging with shared memory. An optional coordinator agent can synthesize a final decision from all member responses.
 
 ### Pipeline (Linear)
 Sequential handoff between specialists. Each agent completes its work, yields its state to the next agent, and terminates cleanly. Clear ownership, predictable execution.

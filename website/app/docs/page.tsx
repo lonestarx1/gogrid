@@ -18,6 +18,7 @@ const sections = [
   { id: "team", label: "Team (Chat Room)" },
   { id: "message-bus", label: "Message Bus" },
   { id: "consensus", label: "Consensus Strategies" },
+  { id: "coordinator", label: "Coordinator" },
   { id: "tracing", label: "Tracing" },
   { id: "cost-tracking", label: "Cost Tracking" },
 ];
@@ -718,6 +719,52 @@ func (k KeywordConsensus) Evaluate(total int, responses map[string]string) (stri
 }`}
                 filename="custom strategy"
               />
+            </Section>
+
+            {/* Coordinator */}
+            <Section id="coordinator" title="Coordinator">
+              <P>
+                By default, team decisions are formed by concatenating agent responses.
+                A <Code>coordinator</Code> is an optional leader agent that receives all
+                member responses and synthesizes a single, coherent final decision — like
+                a team lead who listens to everyone before making the call.
+              </P>
+              <CodeBlock
+                code={`coordinator := agent.New("lead",
+    agent.WithProvider(provider),
+    agent.WithModel("gpt-4o"),
+    agent.WithInstructions("You are the team lead. Synthesize all perspectives into a clear decision."),
+)
+
+t := team.New("code-review",
+    team.WithMembers(
+        team.Member{Agent: reviewer, Role: "correctness"},
+        team.Member{Agent: security, Role: "security"},
+        team.Member{Agent: perf, Role: "performance"},
+    ),
+    team.WithCoordinator(coordinator),
+    team.WithStrategy(team.Unanimous{}),
+    team.WithConfig(team.Config{MaxRounds: 1}),
+)
+
+result, _ := t.Run(ctx, "Review this function: ...")
+// result.Decision.Content is the coordinator's synthesized answer
+// result.Responses includes both member and coordinator results`}
+                filename="coordinator"
+              />
+              <H3>How It Works</H3>
+              <ol className="list-decimal list-inside space-y-2 text-text-muted mb-6">
+                <li>Member agents run their rounds as normal (controlled by the consensus strategy)</li>
+                <li>After rounds complete, the coordinator receives the original input and all member responses</li>
+                <li>The coordinator produces the final team decision</li>
+                <li>If the coordinator fails, the team falls back to the combined member responses</li>
+              </ol>
+              <H3>Coordinator Costs</H3>
+              <P>
+                The coordinator&apos;s LLM call is included in the team&apos;s total cost and
+                token usage. Its result appears in <Code>result.Responses</Code> alongside
+                member results, and a <Code>team.coordinator</Code> trace span is emitted.
+              </P>
             </Section>
 
             {/* Tracing */}

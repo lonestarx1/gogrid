@@ -661,6 +661,215 @@ DONE:
 	}
 }
 
+func TestRunWithCoordinator(t *testing.T) {
+	coordinator := newTestAgent("coordinator", "synthesized decision from all inputs")
+
+	tm := New("coordinated-team",
+		WithMembers(
+			Member{Agent: newTestAgent("alice", "I think yes"), Role: "advocate"},
+			Member{Agent: newTestAgent("bob", "I think no"), Role: "skeptic"},
+		),
+		WithCoordinator(coordinator),
+		WithStrategy(Unanimous{}),
+	)
+
+	result, err := tm.Run(context.Background(), "should we proceed?")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Decision should come from coordinator, not concatenated responses.
+	if result.Decision.Content != "synthesized decision from all inputs" {
+		t.Errorf("Decision = %q, want coordinator's response", result.Decision.Content)
+	}
+
+	// Coordinator result should be in Responses.
+	if _, ok := result.Responses["coordinator"]; !ok {
+		t.Error("missing coordinator in Responses")
+	}
+
+	// Member responses should also be present.
+	if _, ok := result.Responses["alice"]; !ok {
+		t.Error("missing alice in Responses")
+	}
+	if _, ok := result.Responses["bob"]; !ok {
+		t.Error("missing bob in Responses")
+	}
+}
+
+func TestRunCoordinatorCostIncluded(t *testing.T) {
+	coordinator := newTestAgent("coord", "final answer")
+
+	tm := New("cost-coord",
+		WithMembers(
+			Member{Agent: newTestAgent("a", "resp")},
+		),
+		WithCoordinator(coordinator),
+	)
+
+	result, err := tm.Run(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Two agents ran (member + coordinator), each with 15 total tokens.
+	if result.TotalUsage.TotalTokens != 30 {
+		t.Errorf("TotalTokens = %d, want 30 (member + coordinator)", result.TotalUsage.TotalTokens)
+	}
+}
+
+func TestRunCoordinatorTraceSpan(t *testing.T) {
+	tracer := trace.NewInMemory()
+	coordinator := newTestAgent("lead", "decision")
+
+	tm := New("traced-coord",
+		WithMembers(
+			Member{Agent: newTestAgent("a", "resp")},
+		),
+		WithCoordinator(coordinator),
+		WithTracer(tracer),
+	)
+
+	_, err := tm.Run(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	spans := tracer.Spans()
+	found := false
+	for _, s := range spans {
+		if s.Name == "team.coordinator" {
+			found = true
+			if s.Attributes["team.coordinator.name"] != "lead" {
+				t.Errorf("coordinator name attr = %q, want %q",
+					s.Attributes["team.coordinator.name"], "lead")
+			}
+		}
+	}
+	if !found {
+		t.Error("missing team.coordinator span")
+	}
+}
+
+func TestRunCoordinatorBusMessage(t *testing.T) {
+	bus := NewBus()
+	ch, unsub := bus.Subscribe("team.coordinator", 10)
+	defer unsub()
+
+	coordinator := newTestAgent("lead", "final call")
+
+	tm := New("bus-coord",
+		WithMembers(
+			Member{Agent: newTestAgent("a", "input")},
+		),
+		WithCoordinator(coordinator),
+		WithBus(bus),
+	)
+
+	_, err := tm.Run(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	select {
+	case msg := <-ch:
+		if msg.From != "lead" {
+			t.Errorf("bus msg From = %q, want %q", msg.From, "lead")
+		}
+		if msg.Content != "final call" {
+			t.Errorf("bus msg Content = %q, want %q", msg.Content, "final call")
+		}
+	default:
+		t.Error("no coordinator message on bus")
+	}
+}
+
+func TestRunCoordinatorError(t *testing.T) {
+	badCoord := agent.New("bad-coord",
+		agent.WithProvider(&errorProvider{err: errors.New("coord down")}),
+		agent.WithModel("mock-model"),
+	)
+
+	tm := New("error-coord",
+		WithMembers(
+			Member{Agent: newTestAgent("a", "resp")},
+		),
+		WithCoordinator(badCoord),
+	)
+
+	result, err := tm.Run(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// When coordinator fails, decision falls back to combined member responses.
+	if result.Decision.Content == "" {
+		t.Error("Decision should not be empty when coordinator fails")
+	}
+	if _, ok := result.Responses["bad-coord"]; ok {
+		t.Error("failed coordinator should not be in Responses")
+	}
+}
+
+func TestRunWithoutCoordinator(t *testing.T) {
+	// Verify existing behavior is unchanged when no coordinator is set.
+	tm := New("no-coord",
+		WithMembers(
+			Member{Agent: newTestAgent("a", "response a")},
+			Member{Agent: newTestAgent("b", "response b")},
+		),
+		WithStrategy(Unanimous{}),
+	)
+
+	result, err := tm.Run(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Decision should be combined responses (no coordinator).
+	if !contains(result.Decision.Content, "response a") {
+		t.Error("Decision missing agent a's response")
+	}
+	if !contains(result.Decision.Content, "response b") {
+		t.Error("Decision missing agent b's response")
+	}
+}
+
+func TestBuildCoordinatorPrompt(t *testing.T) {
+	tm := New("test",
+		WithMembers(
+			Member{Agent: newTestAgent("alice", ""), Role: "advocate"},
+			Member{Agent: newTestAgent("bob", "")},
+		),
+	)
+
+	results := map[string]*agent.Result{
+		"alice": {Message: llm.NewAssistantMessage("alice says yes")},
+		"bob":   {Message: llm.NewAssistantMessage("bob says no")},
+	}
+
+	prompt := tm.buildCoordinatorPrompt("original question", results)
+
+	if !contains(prompt, "original question") {
+		t.Error("missing original question")
+	}
+	if !contains(prompt, "alice (advocate)") {
+		t.Error("missing alice with role")
+	}
+	if !contains(prompt, "alice says yes") {
+		t.Error("missing alice's response")
+	}
+	if !contains(prompt, "bob") {
+		t.Error("missing bob")
+	}
+	if !contains(prompt, "bob says no") {
+		t.Error("missing bob's response")
+	}
+	if !contains(prompt, "Synthesize") {
+		t.Error("missing synthesis instruction")
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && searchSubstring(s, substr)
 }
