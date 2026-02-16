@@ -1,0 +1,71 @@
+version: "1"
+
+# This example demonstrates a multi-agent project with three agents across
+# two different providers. Each agent has a distinct role, model, and
+# execution configuration.
+#
+# Run agents individually:
+#   gogrid run researcher -input "Explain how garbage collection works in Go"
+#   gogrid run code-reviewer -input "Review this function: func add(a, b int) int { return a + b }"
+#   gogrid run summarizer -input "Go is a statically typed, compiled language..."
+#
+# Inspect results:
+#   gogrid trace           # list recent runs
+#   gogrid trace <run-id>  # view execution span tree
+#   gogrid cost            # view costs across all runs
+#   gogrid cost <run-id>   # detailed cost breakdown for a run
+
+agents:
+  # A research agent using Anthropic's Claude for in-depth analysis.
+  # Uses a higher token limit and more turns for thorough exploration.
+  researcher:
+    model: ${ANTHROPIC_MODEL:-claude-sonnet-4-5-20250929}
+    provider: anthropic
+    instructions: |
+      You are a technical researcher. When given a topic:
+      1. Explain the core concepts clearly
+      2. Provide concrete examples
+      3. Discuss trade-offs and alternatives
+      4. Mention common pitfalls
+
+      Be thorough but structured. Use headings and bullet points.
+    config:
+      max_turns: 10
+      max_tokens: 4096
+      temperature: 0.7
+      timeout: 2m
+      cost_budget: 0.50
+
+  # A code review agent using OpenAI's GPT-4o-mini.
+  # Lower token limit since reviews should be concise.
+  code-reviewer:
+    model: ${OPENAI_MODEL:-gpt-4o-mini}
+    provider: openai
+    instructions: |
+      You are a senior Go code reviewer. When given code:
+      1. Check for correctness and edge cases
+      2. Evaluate error handling
+      3. Assess naming and readability
+      4. Suggest improvements with code examples
+
+      Be constructive. Praise what's done well before suggesting changes.
+      Follow Go conventions and idioms.
+    config:
+      max_turns: 5
+      max_tokens: 2048
+      timeout: 60s
+      cost_budget: 0.10
+
+  # A summarization agent using a fast, cheap model.
+  # Minimal turns and low budget since summaries are straightforward.
+  summarizer:
+    model: ${OPENAI_MODEL:-gpt-4o-mini}
+    provider: openai
+    instructions: |
+      You are a summarizer. Condense the input into a clear, concise summary.
+      Use 3-5 bullet points for the key takeaways. Keep it under 200 words.
+    config:
+      max_turns: 3
+      max_tokens: 1024
+      timeout: 30s
+      cost_budget: 0.05

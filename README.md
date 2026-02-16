@@ -62,8 +62,108 @@ AI agents are **infrastructure**, not scripts.
 
 Python works for prototyping. Go works for production — the same way Kubernetes, Docker, Prometheus, and Terraform are all written in Go. That's why GoGrid is built on Go.
 
+## Quick Start
+
+Install GoGrid and scaffold a project in under a minute:
+
+```bash
+# Build the CLI
+git clone https://github.com/lonestarx1/gogrid.git
+cd gogrid
+make build
+
+# Scaffold a new project
+bin/gogrid init --template single my-agent
+cd my-agent
+
+# Set up the project
+go mod init github.com/example/my-agent
+go mod tidy
+export OPENAI_API_KEY=sk-proj-...
+
+# Run your agent
+gogrid run assistant -input "Explain Go's concurrency model"
+```
+
+GoGrid also supports `team` and `pipeline` templates:
+
+```bash
+gogrid init --template team my-research-team
+gogrid init --template pipeline my-content-pipeline
+```
+
+## CLI
+
+The `gogrid` CLI is the primary interface for working with GoGrid projects. Define agents in `gogrid.yaml`, run them from the command line, and inspect execution traces and costs.
+
+### Define agents in `gogrid.yaml`
+
+```yaml
+version: "1"
+
+agents:
+  researcher:
+    model: claude-sonnet-4-5-20250929
+    provider: anthropic
+    instructions: |
+      You are a research assistant. Provide thorough analysis with
+      key findings, supporting evidence, and areas for further investigation.
+    config:
+      max_turns: 10
+      max_tokens: 4096
+      temperature: 0.7
+      timeout: 2m
+      cost_budget: 0.50
+
+  summarizer:
+    model: gpt-4o-mini
+    provider: openai
+    instructions: |
+      Condense the input into 3-5 bullet points. Keep it under 200 words.
+    config:
+      max_turns: 3
+      max_tokens: 1024
+      timeout: 30s
+```
+
+Config values support environment variable substitution (`${VAR}`, `${VAR:-default}`). API keys are resolved from `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY` environment variables — never stored in config files.
+
+### Run agents
+
+```bash
+gogrid list                                           # List defined agents
+gogrid run researcher -input "Explain the CAP theorem" # Execute an agent
+```
+
+### Inspect traces and costs
+
+Every run is recorded. Inspect what happened and what it cost:
+
+```bash
+# View execution span tree
+$ gogrid trace <run-id>
+agent.run (4.2s)
+├── memory.load (1ms)
+├── llm.complete (2.1s) [prompt: 150, completion: 89]
+├── llm.complete (1.8s) [prompt: 280, completion: 145]
+└── memory.save (2ms)
+
+# View cost breakdown
+$ gogrid cost <run-id>
+MODEL                         CALLS  PROMPT  COMPLETION  COST
+claude-sonnet-4-5-20250929    2      430     234         $0.003280
+────────────────────────────────────────────────────────────────
+TOTAL                         2      430     234         $0.003280
+```
+
+Both commands support `-json` for programmatic use. Run `gogrid trace` or `gogrid cost` with no arguments to list all recorded runs.
+
+For full CLI documentation, see [docs/cli.md](docs/cli.md).
+
 ## Features
 
+- **CLI and project scaffolding** — `gogrid init` generates working projects from templates. `gogrid run`, `gogrid trace`, and `gogrid cost` provide a complete development workflow from the command line.
+- **YAML-based configuration** — Define agents declaratively with environment variable substitution. No secrets in config files.
 - **Built-in observability** — Structured tracing with OTLP export (Jaeger, Tempo, Zipkin), structured JSON logging with trace correlation, and Prometheus-compatible metrics — all using the Go standard library
 - **Cost governance** — Budget alerts, per-entity cost allocation, aggregate reporting, and built-in pricing for popular models. Every LLM call is metered and budgetable.
 - **Shared memory** — Optimized, monitorable shared memory pool for multi-agent architectures
@@ -77,7 +177,13 @@ Python works for prototyping. Go works for production — the same way Kubernete
 
 ## Documentation
 
+- [CLI Reference](docs/cli.md) — Full CLI command reference, config format, and environment setup
 - [Manifesto](docs/manifesto.md) — Why GoGrid exists and what we believe
+
+## Examples
+
+- [`examples/single-agent/`](examples/single-agent/) — Programmatic single agent with tool use (Go API)
+- [`examples/cli-quickstart/`](examples/cli-quickstart/) — Multi-agent project using the CLI with `gogrid.yaml`
 
 ## License
 
