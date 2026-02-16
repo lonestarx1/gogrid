@@ -176,7 +176,7 @@ func NewFileWriter(path string, config FileConfig) (*FileWriter, error) {
 
 	info, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("log: stat file: %w", err)
 	}
 

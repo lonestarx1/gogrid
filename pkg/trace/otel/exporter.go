@@ -120,7 +120,7 @@ func (e *Exporter) EndSpan(span *trace.Span) {
 	e.batch = append(e.batch, os)
 
 	if len(e.batch) >= e.batchSize {
-		e.flushLocked()
+		_ = e.flushLocked()
 	}
 }
 
@@ -207,7 +207,7 @@ func (e *Exporter) flushLocked() error {
 	if err != nil {
 		return fmt.Errorf("otel: export: %w", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("otel: export: HTTP %d", resp.StatusCode)

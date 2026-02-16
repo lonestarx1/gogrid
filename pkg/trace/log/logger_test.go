@@ -257,7 +257,7 @@ func TestFileWriterCreateAndWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer fw.Close()
+	defer func() { _ = fw.Close() }()
 
 	msg := []byte("hello world\n")
 	n, err := fw.Write(msg)
@@ -282,7 +282,7 @@ func TestFileWriterRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer fw.Close()
+	defer func() { _ = fw.Close() }()
 
 	// Write enough to trigger rotation.
 	data := []byte("12345678901234567890X") // 21 bytes > MaxSize 20
@@ -314,7 +314,7 @@ func TestFileWriterMultipleRotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer fw.Close()
+	defer func() { _ = fw.Close() }()
 
 	// Three writes, each triggering rotation.
 	for i := 0; i < 3; i++ {
@@ -338,7 +338,7 @@ func TestFileWriterNoRotationWhenUnderLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer fw.Close()
+	defer func() { _ = fw.Close() }()
 
 	_, _ = fw.Write([]byte("small\n"))
 
@@ -355,7 +355,7 @@ func TestFileWriterSubdirectoryCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer fw.Close()
+	defer func() { _ = fw.Close() }()
 
 	_, err = fw.Write([]byte("test\n"))
 	if err != nil {

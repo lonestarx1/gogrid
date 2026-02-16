@@ -15,7 +15,7 @@ import (
 
 func TestNewExporterDefaults(t *testing.T) {
 	e := NewExporter()
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	if e.endpoint != "http://localhost:4318/v1/traces" {
 		t.Errorf("endpoint = %q, want default", e.endpoint)
@@ -38,7 +38,7 @@ func TestOptions(t *testing.T) {
 		WithFlushInterval(10*time.Second),
 		WithHTTPClient(client),
 	)
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	if e.endpoint != "http://custom:4318/v1/traces" {
 		t.Errorf("endpoint = %q", e.endpoint)
@@ -59,7 +59,7 @@ func TestOptions(t *testing.T) {
 
 func TestStartSpanCreatesValidSpan(t *testing.T) {
 	e := NewExporter(WithFlushInterval(time.Hour))
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	ctx, span := e.StartSpan(context.Background(), "test.op")
 	if span == nil {
@@ -78,7 +78,7 @@ func TestStartSpanCreatesValidSpan(t *testing.T) {
 
 func TestStartSpanPropagatesTraceID(t *testing.T) {
 	e := NewExporter(WithFlushInterval(time.Hour))
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	ctx, parent := e.StartSpan(context.Background(), "parent")
 	_, child := e.StartSpan(ctx, "child")
@@ -101,7 +101,7 @@ func TestStartSpanPropagatesTraceID(t *testing.T) {
 
 func TestEndSpanAddsToBatch(t *testing.T) {
 	e := NewExporter(WithFlushInterval(time.Hour))
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	_, span := e.StartSpan(context.Background(), "test.op")
 	e.EndSpan(span)
@@ -113,7 +113,7 @@ func TestEndSpanAddsToBatch(t *testing.T) {
 
 func TestEndSpanSetsEndTime(t *testing.T) {
 	e := NewExporter(WithFlushInterval(time.Hour))
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	_, span := e.StartSpan(context.Background(), "test.op")
 	e.EndSpan(span)
@@ -141,7 +141,7 @@ func TestFlushSendsToEndpoint(t *testing.T) {
 		WithEndpoint(srv.URL),
 		WithFlushInterval(time.Hour),
 	)
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	_, span := e.StartSpan(context.Background(), "test.op")
 	span.SetAttribute("key", "value")
@@ -220,7 +220,7 @@ func TestFlushWithServiceVersion(t *testing.T) {
 		WithServiceVersion("2.0.0"),
 		WithFlushInterval(time.Hour),
 	)
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	_, span := e.StartSpan(context.Background(), "test")
 	e.EndSpan(span)
@@ -245,7 +245,7 @@ func TestFlushWithServiceVersion(t *testing.T) {
 
 func TestFlushEmptyBatch(t *testing.T) {
 	e := NewExporter(WithFlushInterval(time.Hour))
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	if err := e.Flush(); err != nil {
 		t.Errorf("Flush empty batch should not error: %v", err)
@@ -268,7 +268,7 @@ func TestBatchSizeAutoFlush(t *testing.T) {
 		WithBatchSize(3),
 		WithFlushInterval(time.Hour),
 	)
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	for i := 0; i < 3; i++ {
 		_, span := e.StartSpan(context.Background(), "test")
@@ -297,7 +297,7 @@ func TestFlushHTTPError(t *testing.T) {
 		WithEndpoint(srv.URL),
 		WithFlushInterval(time.Hour),
 	)
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	_, span := e.StartSpan(context.Background(), "test")
 	e.EndSpan(span)
@@ -468,7 +468,7 @@ func TestExporterConcurrency(t *testing.T) {
 		WithBatchSize(1000),
 		WithFlushInterval(time.Hour),
 	)
-	defer e.Shutdown()
+	defer func() { _ = e.Shutdown() }()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
