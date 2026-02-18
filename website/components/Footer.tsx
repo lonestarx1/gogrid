@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 export default function Footer() {
@@ -12,9 +13,9 @@ export default function Footer() {
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <h2 className="font-mono text-3xl md:text-4xl font-bold text-white mb-4">
-            GoGrid
-          </h2>
+          <div className="flex justify-center mb-6">
+            <Image src="/logo.svg" alt="GoGrid G2" width={140} height={119} />
+          </div>
           <p className="text-text-muted mb-8 max-w-xl mx-auto italic">
             We&apos;re not building the next framework.
             <br />

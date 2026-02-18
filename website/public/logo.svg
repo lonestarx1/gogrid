@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 340" width="400" height="340">
+  <!-- GoGrid G2 logo — transparent background variant for website use -->
+
+  <!-- G2 large centered -->
+  <text x="200" y="200" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="800"
+        font-size="200" fill="#EDEDED" text-anchor="middle" letter-spacing="-12">G2</text>
+
+  <!-- Thin horizontal rule (accent) -->
+  <line x1="100" y1="238" x2="300" y2="238" stroke="#00ff88" stroke-width="2.5"/>
+
+  <!-- GOGRID wordmark underneath -->
+  <text x="200" y="275" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="300"
+        font-size="32" fill="#888888" text-anchor="middle" letter-spacing="14">GOGRID</text>
+</svg>

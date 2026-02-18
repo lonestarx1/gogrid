@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 export default function Navbar() {
@@ -18,9 +19,10 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         <Link
           href="/"
-          className="font-mono font-bold text-white text-lg hover:text-accent transition-colors"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          GoGrid
+          <Image src="/logo-compact.svg" alt="GoGrid" width={48} height={24} priority />
+          <span className="font-mono font-bold text-white text-sm hidden sm:inline">GoGrid</span>
         </Link>
 
         <div className="flex items-center gap-6">

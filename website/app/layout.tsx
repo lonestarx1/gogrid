@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   title: "GoGrid — Kubernetes for AI Agents",
   description:
     "A production-grade AI agent framework written in Go. Built for infrastructure engineers, not notebook demos.",
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
     title: "GoGrid — Kubernetes for AI Agents",
     description:

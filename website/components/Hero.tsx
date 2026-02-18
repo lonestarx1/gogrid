@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 export default function Hero() {
@@ -17,6 +18,15 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
+          <motion.div
+            className="mb-8 flex justify-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <Image src="/logo.svg" alt="GoGrid G2" width={200} height={170} priority />
+          </motion.div>
+
           <p className="font-mono text-accent text-sm tracking-widest uppercase mb-6">
             Open Source &middot; Go &middot; Production-Grade
           </p>
