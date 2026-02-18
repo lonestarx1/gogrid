@@ -1,12 +1,12 @@
-# GoGrid (G2) — Kubernetes for AI Agents
+# GoGrid (G2) — Develop and Orchestrate AI Agents
 
 > **[gogrid.org](https://gogrid.org)**
-> A production-grade AI agent framework written in Go.
+> A unified system for developing and orchestrating production AI agents in Go.
 > Built for infrastructure engineers, not notebook demos.
 
 ---
 
-## Why Another Agent Framework?
+## Why Another Agent System?
 
 Every existing agent framework gets something right — and gets something fundamentally wrong.
 
@@ -14,9 +14,9 @@ LangChain has the ecosystem but drowns you in abstraction. CrewAI has the mental
 
 **80-90% of AI agent projects never leave the pilot phase.** (RAND, 2025)
 
-GoGrid is the framework for the other side of that gap.
+GoGrid is the system for the other side of that gap.
 
-GoGrid is not a wrapper around LLM APIs. It is infrastructure for running agents at scale — the way Kubernetes is infrastructure for running containers at scale.
+GoGrid is not a wrapper around LLM APIs. It fuses agent development with agent orchestration into a single system — the way Kubernetes fused container packaging with container management. The agent you define IS the agent that gets orchestrated, monitored, and governed in production.
 
 ## Core Principles
 
@@ -28,7 +28,7 @@ GoGrid is not a wrapper around LLM APIs. It is infrastructure for running agents
 
 ## Architecture
 
-GoGrid supports five orchestration patterns, because different problems demand different architectures:
+GoGrid supports five workload types — composable orchestration primitives with built-in governance:
 
 ### Single Agent
 A well-scoped agent with a small number of tools. The recommended starting point for any GoGrid project.
@@ -49,7 +49,7 @@ GoGrid's most powerful pattern. A Runtime enables agents to spawn child agents, 
 
 ## Why Go?
 
-AI agents are **infrastructure**, not scripts.
+AI agents are **infrastructure** — building them and running them should be one system.
 
 | Requirement | Go's Answer |
 |---|---|

@@ -1,4 +1,4 @@
-# ADR-001: Why Go for an AI Agent Framework
+# ADR-001: Why Go for an AI Agent System
 
 ## Status
 
@@ -10,7 +10,7 @@ February 2026
 
 ## Context
 
-The AI agent ecosystem is dominated by Python frameworks (LangChain, CrewAI, AutoGen). Starting a new framework in Go requires justification since Python has more LLM SDKs, a larger ML community, and faster prototyping velocity.
+The AI agent ecosystem is dominated by Python systems (LangChain, CrewAI, AutoGen). Starting a new system in Go requires justification since Python has more LLM SDKs, a larger ML community, and faster prototyping velocity.
 
 GoGrid targets production deployments, not notebook prototyping. The primary users are infrastructure engineers building agent systems that must run reliably at scale.
 

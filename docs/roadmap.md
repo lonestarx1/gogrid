@@ -1,6 +1,6 @@
 # GoGrid (G2) — Implementation Plan (plan0)
 
-> Multi-phase roadmap from empty repo to production-grade AI agent framework.
+> Multi-phase roadmap from empty repo to production-grade AI agent system.
 > Each phase builds on the previous. No phase ships without tests.
 
 ---

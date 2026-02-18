@@ -121,9 +121,9 @@ export default function DocsPage() {
             {/* Getting Started */}
             <Section id="getting-started" title="Getting Started">
               <P>
-                GoGrid (G2) is an open-source AI agent framework written in Go. It provides
-                five composable orchestration patterns: Single Agent, Team, Pipeline, Graph,
-                and Dynamic Orchestration.
+                GoGrid (G2) is a unified system for developing and orchestrating production
+                AI agents in Go. It supports five composable workload types: Single Agent,
+                Team, Pipeline, Graph, and Dynamic Orchestration.
               </P>
               <H3>Installation</H3>
               <CodeBlock

@@ -44,8 +44,9 @@ export default function WhyGo() {
             Why <span className="text-accent">Go</span>?
           </h2>
           <p className="text-text-muted text-lg max-w-2xl mx-auto">
-            AI agents are infrastructure, not scripts. Infrastructure demands a
-            language built for infrastructure.
+            AI agents are infrastructure — building them and running them should
+            be one system. That system demands a language built for
+            infrastructure.
           </p>
         </motion.div>
 

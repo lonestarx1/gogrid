@@ -8,7 +8,7 @@ We've studied every major agent framework. We've read the GitHub issues, the Red
 
 **The AI agent ecosystem is optimized for demos, not production.**
 
-80-90% of AI agent projects never leave the pilot phase (RAND, 2025). This isn't a failure of AI — it's a failure of infrastructure. The frameworks we have today were built to make prototyping easy. Nobody built the framework that makes production easy.
+80-90% of AI agent projects never leave the pilot phase (RAND, 2025). This isn't a failure of AI — it's a failure of infrastructure. The frameworks we have today were built to make prototyping easy. Nobody built the system that makes production easy.
 
 GoGrid is here to fix that.
 
@@ -28,7 +28,7 @@ GoGrid follows the Go philosophy: explicit is better than implicit. Readable bea
 
 Monitoring. Cost tracking. Error recovery. Graceful degradation. Security. Backward compatibility. Horizontal scaling.
 
-These are not "nice to haves" you bolt on after the demo works. These are the entire reason a framework exists. If your framework doesn't make production easier, it's not a framework — it's a tutorial.
+These are not "nice to haves" you bolt on after the demo works. These are the entire reason a system exists. If your tool doesn't make production easier, it's not a system — it's a tutorial.
 
 GoGrid builds production essentials in from day one:
 - **Observability** is not an add-on. Every GoGrid agent invocation is traceable across the full execution path.
@@ -90,16 +90,16 @@ GoGrid commits to **backward-compatible, gradual updates**. Your agents will not
 
 ## What We're Building
 
-**GoGrid: Kubernetes for AI agents.**
+**GoGrid: Develop and orchestrate AI agents.**
 
-A framework where:
+A unified system where the agent you define IS the agent that gets orchestrated, monitored, and governed in production — the way Kubernetes fused container packaging with container management:
 - An agent compiles to a single binary that runs anywhere
 - 50,000 concurrent agents are a Tuesday, not a crisis
 - Debugging means tracing a clear execution path, not spelunking through abstraction layers
 - Cost is visible, budgeted, and controlled
 - Security is the default, not a checkbox
 - Memory is a primitive, not a plugin
-- The architecture matches the problem, not the framework's opinion
+- The architecture matches the problem, not the system's opinion
 - Upgrading never breaks what works
 
 This is infrastructure. GoGrid builds it like infrastructure.
@@ -117,6 +117,6 @@ If you're building a weekend hackathon project, there are simpler tools. If you'
 
 ---
 
-*GoGrid. We're not building the next framework. We're building the last one you'll need.*
+*We're not building the next framework. We're building the system that makes frameworks unnecessary.*
 
 **[gogrid.org](https://gogrid.org)**
