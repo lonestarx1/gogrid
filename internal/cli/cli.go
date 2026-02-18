@@ -68,7 +68,7 @@ func (a *App) Run(args []string) int {
 }
 
 func (a *App) printUsage() {
-	a.outf(`gogrid — Kubernetes for AI agents
+	a.outf(`gogrid — Develop and orchestrate AI agents
 
 Usage: gogrid <command> [flags]
 

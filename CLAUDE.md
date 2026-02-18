@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**GoGrid (G2)** — An open-source, production-grade AI agent development framework written in Go. The guiding metaphor is "Kubernetes for AI agents."
+**GoGrid (G2)** — A unified system for developing and orchestrating production AI agents in Go. GoGrid fuses agent development with agent orchestration the way Kubernetes fused container packaging with container management.
 
 **Project name:** GoGrid (shorthand: G2)
 **Domain:** [gogrid.org](https://gogrid.org)
@@ -64,7 +64,7 @@ GoGrid supports 5 orchestration patterns. All patterns are composable:
 - When writing commit messages, docs, or comments: clear, direct, no fluff
 - Use concrete examples over abstract descriptions
 - Reference the GoGrid manifesto when making architectural decisions
-- Refer to the project as "GoGrid" or "G2" — never as "the framework" in isolation
+- Refer to the project as "GoGrid" or "G2" — never as "the framework" in isolation. Use "system" when a generic noun is needed.
 
 ## What NOT to Do
 

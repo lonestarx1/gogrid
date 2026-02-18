@@ -19,7 +19,7 @@ export default function Footer() {
           <p className="text-text-muted mb-8 max-w-xl mx-auto italic">
             We&apos;re not building the next framework.
             <br />
-            We&apos;re building the last one you&apos;ll need.
+            We&apos;re building the system that makes frameworks unnecessary.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">

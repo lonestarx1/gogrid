@@ -16,16 +16,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GoGrid — Kubernetes for AI Agents",
+  title: "GoGrid — Develop and Orchestrate AI Agents",
   description:
-    "A production-grade AI agent framework written in Go. Built for infrastructure engineers, not notebook demos.",
+    "A unified system for developing and orchestrating production AI agents in Go. Built for infrastructure engineers, not notebook demos.",
   icons: {
     icon: "/favicon.svg",
   },
   openGraph: {
-    title: "GoGrid — Kubernetes for AI Agents",
+    title: "GoGrid — Develop and Orchestrate AI Agents",
     description:
-      "A production-grade AI agent framework written in Go. Built for infrastructure engineers, not notebook demos.",
+      "A unified system for developing and orchestrating production AI agents in Go. Built for infrastructure engineers, not notebook demos.",
     url: "https://gogrid.org",
     siteName: "GoGrid",
     type: "website",

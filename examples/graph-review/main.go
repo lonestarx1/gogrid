@@ -28,7 +28,7 @@ func main() {
 	// Writer produces the initial draft.
 	writer := agent.New("writer",
 		agent.WithProvider(mock.New(mock.WithFallback(&llm.Response{
-			Message: llm.NewAssistantMessage("Draft: GoGrid is a framework for building AI agents in Go. It supports five orchestration patterns."),
+			Message: llm.NewAssistantMessage("Draft: GoGrid is a system for developing and orchestrating AI agents in Go. It supports five workload types."),
 			Usage:   llm.Usage{PromptTokens: 20, CompletionTokens: 20, TotalTokens: 40},
 			Model:   "mock",
 		}))),
@@ -57,7 +57,7 @@ func main() {
 	// Reviser improves content based on feedback, then goes back to reviewer.
 	reviser := agent.New("reviser",
 		agent.WithProvider(mock.New(mock.WithFallback(&llm.Response{
-			Message: llm.NewAssistantMessage("GoGrid is a production-grade AI agent framework in Go with five composable orchestration patterns: single agent, team, pipeline, graph, and dynamic orchestration."),
+			Message: llm.NewAssistantMessage("GoGrid is a production-grade system for developing and orchestrating AI agents in Go with five composable workload types: single agent, team, pipeline, graph, and dynamic orchestration."),
 			Usage:   llm.Usage{PromptTokens: 40, CompletionTokens: 30, TotalTokens: 70},
 			Model:   "mock",
 		}))),

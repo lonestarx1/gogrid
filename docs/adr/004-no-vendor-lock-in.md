@@ -10,7 +10,7 @@ February 2026
 
 ## Context
 
-AI agent frameworks often have deep coupling to a single LLM provider. This creates risk: pricing changes, API deprecations, or model quality regressions force expensive rewrites. Users should be able to swap providers with a configuration change.
+AI agent systems often have deep coupling to a single LLM provider. This creates risk: pricing changes, API deprecations, or model quality regressions force expensive rewrites. Users should be able to swap providers with a configuration change.
 
 ## Decision
 

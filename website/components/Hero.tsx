@@ -32,12 +32,12 @@ export default function Hero() {
           </p>
 
           <h1 className="font-mono text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Kubernetes for{" "}
+            Develop and Orchestrate{" "}
             <span className="text-accent glow">AI Agents</span>
           </h1>
 
           <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-            A production-grade AI agent framework written in Go.
+            A unified system for developing and orchestrating production AI agents in Go.
             <br />
             Built for infrastructure engineers, not notebook demos.
           </p>

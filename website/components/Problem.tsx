@@ -41,8 +41,9 @@ export default function Problem() {
 
           <p className="text-text-muted text-lg md:text-xl leading-relaxed mb-12 max-w-3xl">
             The world doesn&apos;t need another way to call an LLM. What it
-            needs is a way to run thousands of AI agents in production —
-            reliably, securely, affordably, and at scale.
+            needs is a unified way to develop and orchestrate AI agents in
+            production — where the agent you define is the agent that gets
+            monitored, governed, and scaled.
           </p>
         </motion.div>
 
