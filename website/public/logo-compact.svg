@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60" width="120" height="60">
+  <!-- GoGrid G2 compact logo for navbar -->
+  <text x="60" y="44" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="800"
+        font-size="48" fill="#EDEDED" text-anchor="middle" letter-spacing="-3">G2</text>
+  <line x1="20" y1="52" x2="100" y2="52" stroke="#00ff88" stroke-width="1.5"/>
+</svg>
